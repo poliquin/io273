@@ -54,9 +54,9 @@ function [shares, prices, products, profits, surplus, xi] = mktsim(j, m)
             X = [ones(j, 1), unifrnd(0, 1, j, 1), normrnd(0, 1, j, 1)];
 
             % Nash equilibrium in market k
-            firm_problem = @(P) equilibrium(P, BETA, X, MC, ALPHA, SIGMA, xi_k); 
-            P0 = unifrnd(1, 6, j, 1);  % initial guess for prices
-            [P, fval] = fsolve(firm_problem, P0, options);
+            firmobj = @(P) equilibrium(P, BETA, X, MC, alpha_i, xi_k);
+            P0 = ones(j, 1);
+            [P, fval] = fsolve(firmobj, P0, options);
             
             % Calculate utilities (consumers in rows, products in columns)
             ploss = bsxfun(@times, alpha_i, P');
@@ -82,40 +82,28 @@ function [shares, prices, products, profits, surplus, xi] = mktsim(j, m)
     end  % end simulation for market k
 end
 
-function inner_share = link_fun(BETA, X, ALPHA, SIGMA, xi)
+function inner_share = link_fun(P, BETA, X, alpha_i, xi)
     % LINK_FUN First part of market share equation (integrating over epsilon)
     %   Solves the first part of eq 6.7 in BLP, 1995.
     % Outputs:
     %   Function for computing first part of market share equation.
-    sym v;
-    denom = @(v, P) exp(BETA' * X' - (ALPHA + SIGMA * v)*P' + xi');
-    inner_share = @(v, P) denom(v, P) / (1 + sum(denom(v, P)));
+    disutil = bsxfun(@times, alpha_i, P');
+    posutil = BETA' * X' + xi';
+    denom = mean(exp(bsxfun(@minus, posutil, disutil)));
+    inner_share = denom / (1 + sum(denom));
 end
 
-function s = shares(P, BETA, X, ALPHA, SIGMA, xi)
-    % SHARES Full expression for market share of each product.
-    %   Compute market shares of products (eq 6.7 in BLP, 1995).
-    % Outputs:
-    %   Function for computing j x 1 vector of market shares.
-    sym v;
-    shr = link_fun(BETA, X, ALPHA, SIGMA, xi);
-    s = integral(@(v) shr(v, P)*lognpdf(v, 0, 1), 0, Inf, 'ArrayValued', true);
-end
-
-function foc = equilibrium(P, BETA, X, MC, ALPHA, SIGMA, xi)
+function foc = equilibrium(P, BETA, X, MC, alpha_i, xi)
     % EQUILIBRIUM Solving firm's first order condition.
     %   Computes first-order condition for Nash equilibrium in single market.
     % Outputs:
     %   Value of the first-order condition.
-    sym v;
-    s = @(P) shares(P, BETA, X, ALPHA, SIGMA, xi);
-    
+    share = link_fun(P, BETA, X, alpha_i, xi);
     % Derivatives of market share with respect to prices (eq 6.9a in BLP, 1995)
-    share = link_fun(BETA, X, ALPHA, SIGMA, xi);
-    inner_ds = @(v, P) -v*share(v, P).*(1 - share(v, P))*lognpdf(v, 0, 1);
-    ds = @(P) integral(@(v) inner_ds(v, P), 0, Inf, 'ArrayValued', true);
+    inner_ds = bsxfun(@times, -1*alpha_i, share.*(1 - share));
+    ds = mean(inner_ds);
     
-    foc = s(P)' + (P - MC) .* ds(P)';
+    foc = share' + (P - MC) .* ds';
 end
 
 function [shares, surplus] = simshare(U)
