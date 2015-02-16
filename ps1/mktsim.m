@@ -1,4 +1,4 @@
-function [shares, prices, products, profits] = mktsim(j, m)
+function [shares, prices, products, profits, surplus] = mktsim(j, m)
     %MKTSIM Draw j products in m markets for BLP simulation.
     %   Simulate 500 individuals per market for m markets with j products,
     %   creating characteristics, cost shifters, prices, and market shares.
@@ -10,7 +10,7 @@ function [shares, prices, products, profits] = mktsim(j, m)
     %   jXm vector of prices
     %   jXm by 3 matrix of product characteristics
     %   jXm vector of profits
-
+    %   mX1 vector of total consumer surplus for each market
     % Population parameters
     N = 500;           % number of consumers
     ALPHA = 1;         % population constant price sensitivity
@@ -24,7 +24,8 @@ function [shares, prices, products, profits] = mktsim(j, m)
     shares = zeros(j * m, 1);    % market shares, simulated below
     prices = zeros(j * m, 1);    % prices, solved below
     products = zeros(j * m, 3);  % characteristics, drawn below
-    profits = zeros(j * m, 1);   % profit for each product/market
+    profits = zeros(j * m, 1);   % profit for each product/market, found below
+    surplus = zeros(m, 1);       % total consumer surplus, calculated below
 
     % Marginal cost shifter for firm j across all markets
     W = normrnd(0, 1, j, 1);
@@ -55,7 +56,11 @@ function [shares, prices, products, profits] = mktsim(j, m)
             P0 = unifrnd(1, 6, j, 1);  % initial guess for prices
             [P, fval] = fsolve(firm_problem, P0, options);
             
-            simulated_shares = simshare(P, BETA, X, alpha_i, xi, epsilon);
+            % Calculate utilities (consumers in rows, products in columns)
+            ploss = bsxfun(@times, alpha_i, P');
+            U = repmat(BETA' * X', N, 1) - ploss + repmat(xi', N, 1) + epsilon;
+
+            [simulated_shares, simulated_surplus] = simshare(U);
             % Check if model solved with positive prices and shares
             if fval < 10^-3 & P > 0 & sum(simulated_shares) > 0
                 % found a workable solution for market k
@@ -70,7 +75,7 @@ function [shares, prices, products, profits] = mktsim(j, m)
         prices(1+(k-1)*j : k*j) = P;
         products(1+(k-1)*j : k*j, :) = X;
         profits(1+(k-1)*j : k*j) = profit_k;
-
+        surplus(k) = simulated_surplus;
     end  % end simulation for market k
 end
 
@@ -110,32 +115,29 @@ function foc = equilibrium(P, BETA, X, MC, ALPHA, SIGMA, xi)
     foc = s(P)' + (P - MC) .* ds(P)';
 end
 
-function shares = simshare(P, BETA, X, alpha_i, xi, epsilon)
+function [shares, surplus] = simshare(U)
     %MKTSHARE Calculate market share of each product.
     %   Finds optimal choice for each consumer, then aggregates over consumers
     %   to produce simulation market shares. This differs from firm's problem
     %   because firms don't see epsilon when setting prices.
     % Input Arguments:
-    %   P = prices of products, column vector
-    %   BETA = coefficients on product characteristics, column vector
-    %   X = product characteristics (rows are products, cols are features)
-    %   alpha_i = consumer price sensitivities (rows are consumers)
-    %   xi = market/product specific shock
-    %   epsilon = utility error term (rows are consumers, cols are products)
+    %   U = N by j matrix of consumer utilities
     % Outputs:
     %   Vector of market shares for each product.
-    n = size(alpha_i, 1);  % number of consumers
-    % Calculate consumer utilities (consumers in rows, products in columns)
-    price_loss = bsxfun(@times, alpha_i, P');
-    U = repmat(BETA' * X', n, 1) - price_loss + repmat(xi', n, 1) + epsilon;
+    
     % Find product that gives maximum utility
     [maxU, maxI] = max(U, [], 2);
     maxI(logical(maxU < 0)) = 0;  % these consumers choose outside option
+    maxU(logical(maxU < 0)) = 0;  % utility from outside option is zero
+
     % Tabulate market shares from consumer choices
-    product_count = size(X, 1);
+    [n, product_count] = size(U);
     shares = zeros(product_count, 1);
     for j=1:product_count
         shares(j, 1) = sum(maxI == j) / n;
     end
+
+    % Sum consumer surplus across all consumers
+    surplus = sum(maxU);
 end
 
