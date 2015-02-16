@@ -1,4 +1,4 @@
-function [shares, prices, products, profits, surplus] = mktsim(j, m)
+function [shares, prices, products, profits, surplus, xi] = mktsim(j, m)
     %MKTSIM Draw j products in m markets for BLP simulation.
     %   Simulate 500 individuals per market for m markets with j products,
     %   creating characteristics, cost shifters, prices, and market shares.
@@ -6,11 +6,12 @@ function [shares, prices, products, profits, surplus] = mktsim(j, m)
     %   j = number of products
     %   m = number of markets
     % Outputs:
-    %   jXm vector of observed (simulated) market shares
-    %   jXm vector of prices
+    %   jXm by 1 vector of observed (simulated) market shares
+    %   jXm by 1 vector of prices
     %   jXm by 3 matrix of product characteristics
-    %   jXm vector of profits
-    %   mX1 vector of total consumer surplus for each market
+    %   jXm by 1 vector of profits
+    %     m by 1 vector of total consumer surplus for each market
+    %   jXm by 1 vector of unobserved characteristics
     % Population parameters
     N = 500;           % number of consumers
     ALPHA = 1;         % population constant price sensitivity
@@ -26,6 +27,7 @@ function [shares, prices, products, profits, surplus] = mktsim(j, m)
     products = zeros(j * m, 3);  % characteristics, drawn below
     profits = zeros(j * m, 1);   % profit for each product/market, found below
     surplus = zeros(m, 1);       % total consumer surplus, calculated below
+    xi = zeros(j * m, 1);        % unobserved characteristics
 
     % Marginal cost shifter for firm j across all markets
     W = normrnd(0, 1, j, 1);
@@ -38,7 +40,7 @@ function [shares, prices, products, profits, surplus] = mktsim(j, m)
         MC = [ones(j, 1), W, Z] * GAMMA + eta; 
 
         % Consumer tastes
-        xi = normrnd(0, 1, j, 1);     % unobserved characteristics
+        xi_k = normrnd(0, 1, j, 1);   % unobserved characteristics
         nu = lognrnd(0, 1, N, 1);     % consumer specific price sensitivity
         epsilon = evrnd(0, 1, N, j);  % type 1 extreme value
         alpha_i = ALPHA + SIGMA * nu; % random coefficient on price
@@ -52,13 +54,13 @@ function [shares, prices, products, profits, surplus] = mktsim(j, m)
             X = [ones(j, 1), unifrnd(0, 1, j, 1), normrnd(0, 1, j, 1)];
 
             % Nash equilibrium in market k
-            firm_problem = @(P) equilibrium(P, BETA, X, MC, ALPHA, SIGMA, xi); 
+            firm_problem = @(P) equilibrium(P, BETA, X, MC, ALPHA, SIGMA, xi_k); 
             P0 = unifrnd(1, 6, j, 1);  % initial guess for prices
             [P, fval] = fsolve(firm_problem, P0, options);
             
             % Calculate utilities (consumers in rows, products in columns)
             ploss = bsxfun(@times, alpha_i, P');
-            U = repmat(BETA' * X', N, 1) - ploss + repmat(xi', N, 1) + epsilon;
+            U = repmat(BETA'*X', N, 1) - ploss + repmat(xi_k', N, 1) + epsilon;
 
             [simulated_shares, simulated_surplus] = simshare(U);
             % Check if model solved with positive prices and shares
@@ -76,6 +78,7 @@ function [shares, prices, products, profits, surplus] = mktsim(j, m)
         products(1+(k-1)*j : k*j, :) = X;
         profits(1+(k-1)*j : k*j) = profit_k;
         surplus(k) = simulated_surplus;
+        xi(1+(k-1)*j : k*j) = xi_k;
     end  % end simulation for market k
 end
 
