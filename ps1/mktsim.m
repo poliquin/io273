@@ -13,7 +13,7 @@ function [shares, prices, products, profits, surplus, xi] = mktsim(j, m)
     %     m by 1 vector of total consumer surplus for each market
     %   jXm by 1 vector of unobserved characteristics
     % Population parameters
-    N = 500;           % number of consumers
+    N = 2000;          % number of consumers
     ALPHA = 1;         % population constant price sensitivity
     SIGMA = 1;         % variance of price sensitivity
     BETA = [5; 1; 1];  % characteristic coefficients
@@ -64,7 +64,7 @@ function [shares, prices, products, profits, surplus, xi] = mktsim(j, m)
 
             [simulated_shares, simulated_surplus] = simshare(U);
             % Check if model solved with positive prices and shares
-            if fval < 10^-3 & P > 0 & simulated_shares > 0
+            if fval < 10^-4 & P > 0 & simulated_shares > 0
                 % found a workable solution for market k
                 % solve for profits
                 profit_k = (P - MC) .* (N * simulated_shares);

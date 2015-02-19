@@ -1,34 +1,34 @@
-function [theta, fval] = blpdemand(prices, prods, shares)
+function [theta, fval] = blpdemand(prices, prods, shares, prodcount, mktcount)
     % BLP Estimation of model from BLP (1995)
     %
     
-    prodcount = 3;  % TODO: replace with actual product count
-    mktcount = 100; % TODO: replace with actual market count
+    % construct matrix of BLP instruments
+    Z = abs(eye(prodcount) - 1);   % matrix with 1 on off diagonal
+    Z = repmat({Z}, mktcount, 1);  % selects other products in market
+    Z = blkdiag(Z{:}) * prods;  % sum of other product characteristics
+ 
+    % this is the Nevo instrument
+    totprice = repmat(eye(prodcount), 1, mktcount) * prices;
+    avgprice = (1/(mktcount - 1))*(repmat(totprice, mktcount, 1) - prices);
+    % uncomment below to add Nevo instrument
+    %Z = [avgprice, Z];
 
     % find an initial value for delta using logit model
     share_mat = reshape(shares, prodcount, []);  % markets by products matrix
     out_share = 1 - sum(share_mat);  % share of outside option
-    deltas = reshape(bsxfun(@minus, share_mat, out_share), [], 1);
-
-    % construct Nevo instrument
-    totprice = repmat(eye(prodcount, prodcount), 1, mktcount) * prices;
-    avgprice = (1/(mktcount - 1))*(repmat(totprice, mktcount, 1) - prices);
-
-    % construct matrix of BLP instruments
-    Z = abs(eye(prodcount) - 1);   % matrix with 1 on off diagonal
-    Z = repmat({Z}, mktcount, 1);
-    Z = blkdiag(Z{:}) * prods;  % sum of other product characteristics
-    Z = [Z];
-
-    % draw consumers, held constant for all simulations
-    nu = lognrnd(0, 1, 1500, 1);
+    logit_shr = reshape(bsxfun(@minus, share_mat, out_share), [], 1);
+    [coef, deltas, resid] = logit(logit_shr, [prices, prods], [Z, prods]);
+    
+    % draw 500 consumers for each market, held constant over simulation
+    nu = lognrnd(0, 1, mktcount, 500);
+    nu = kron(nu, ones(prodcount, 1));  % replicate draws for each product
 
     % initial weighting matrix
-    W = ([prods, Z]' * [prods, Z]) \ eye(size([prods, Z], 2));
+    W = ([Z, prods]' * [Z, prods]) \ eye(size([Z, prods], 2));
 
     options = optimset('Display', 'iter');
     estimator = @(s) gmmobj(s, deltas, prices, prods, Z, W, shares, nu);
-    [sigma, fval] = fminunc(estimator, 1, options);
+    [sigma, fval] = fminunc(estimator, lognrnd(0,1), options);
 
     function [fval, grad] = gmmobj(sigma, deltas, prices, X, Z, W, shares, nu)
         % GMMOBJ Objective function for BLP random coefficients model
@@ -46,18 +46,24 @@ function [theta, fval] = blpdemand(prices, prods, shares)
         % create a simulator for market shares that can calculate shares for
         % different values of delta (the d variable); this is used to equate 
         % the observed shares with simulated shares and thereby find deltas.
-        price_utility = sigma * nu * prices';  % consumer disutility from price
-        sharefunc = @(d) deltashares(d, price_utility);  % share simulator
+        price_utility = sigma * bsxfun(@times, nu, prices);  % price disutility
+        sharefunc = @(d) deltashares(d, price_utility, prodcount);  % simulator
         
         % find deltas using the share simulator
-        tolerance = 2e-8;
+        tolerance = 2e-10;
         deltas = innerloop(deltas, shares, sharefunc, tolerance);
         
+        % make sure deltas are defined, otherwise set high objective value
+        if any(isnan(deltas)) == 1
+            fval = 10e6;  % avoid these regions
+            return
+        end
+
         % estimate non-random coefficients and unobservables
-        [betas, xi] = ivreg(deltas, [X, prices], [X, Z], W);
+        [betas, xi] = ivreg(deltas, [prices, X], [Z, X], W);
     
         % compute value of the objective function
-        fval = xi' * [X, Z] * W * [X, Z]' * xi;
+        fval = xi' * [Z, X] * W * [Z, X]' * xi;
         
         if nargout > 2
             grad = 0;  % TODO: compute gradient of objective function
