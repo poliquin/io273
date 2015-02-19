@@ -34,13 +34,7 @@ function [shares, prices, products, profits, surplus, xi] = mktsim(j, m)
 
     for k=1:m  % simulate each market individually
         
-        % Market-specific marginal cost variables
-        Z = normrnd(0, 1, j, 1);
-        eta = normrnd(0, 1, j, 1);
-        MC = [ones(j, 1), W, Z] * GAMMA + eta; 
-
         % Consumer tastes
-        xi_k = normrnd(0, 1, j, 1);   % unobserved characteristics
         nu = lognrnd(0, 1, N, 1);     % consumer specific price sensitivity
         epsilon = evrnd(0, 1, N, j);  % type 1 extreme value
         alpha_i = ALPHA + SIGMA * nu; % random coefficient on price
@@ -48,10 +42,16 @@ function [shares, prices, products, profits, surplus, xi] = mktsim(j, m)
         while 1
             % Model does not always converge, so we need to re-run the
             % simulation until it converges in each market. We can re-draw
-            % the product characteristics to help model find workable values.
+            % the characteristics and costs to help model find workable values.
             
             % Product characteristics: constant, uniform, and standard normal
             X = [ones(j, 1), unifrnd(0, 1, j, 1), normrnd(0, 1, j, 1)];
+            xi_k = normrnd(0, 1, j, 1);   % unobserved characteristics
+
+            % Market-specific marginal cost variables
+            Z = normrnd(0, 1, j, 1);
+            eta = normrnd(0, 1, j, 1);
+            MC = [ones(j, 1), W, Z] * GAMMA + eta; 
 
             % Nash equilibrium in market k
             firmobj = @(P) equilibrium(P, BETA, X, MC, alpha_i, xi_k);
@@ -64,7 +64,7 @@ function [shares, prices, products, profits, surplus, xi] = mktsim(j, m)
 
             [simulated_shares, simulated_surplus] = simshare(U);
             % Check if model solved with positive prices and shares
-            if fval < 10^-3 & P > 0 & sum(simulated_shares) > 0
+            if fval < 10^-3 & P > 0 & simulated_shares > 0
                 % found a workable solution for market k
                 % solve for profits
                 profit_k = (P - MC) .* (N * simulated_shares);

@@ -8,10 +8,7 @@ function [shares] = deltashares(deltas, prutil)
     % Outputs:
     %   shares = Implied market shares, a mXj vector
    
-    % figure out number of markets and products
-    [mktcount, prodcount] = size(deltas);
-
-    % use each cell of deltas to calculate utility for all simulated consumers
+    % use each delta to calculate utility for all simulated consumers
     u = bsxfun(@minus, deltas', prutil);
     mean_u = mean(exp(u));  % mean utility for each product
 

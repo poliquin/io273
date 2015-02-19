@@ -1,6 +1,6 @@
 % Section 2, Question 1
 
-load('data/100_5.mat');
+load('data/100_3.mat');
 % number of markets and products in each market
 mkt_count = size(surplus, 1);
 prod_count = size(prods, 1) / mkt_count;
