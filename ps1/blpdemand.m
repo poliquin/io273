@@ -7,7 +7,10 @@ function [theta, fval] = blpdemand(prices, prods, shares, cost, prodcount, mktco
     %   cost   =   j by 1 vector of firm-level marginal cost shifters
     %   prodcount = number of products
     %   mktcount  = number of markets
-    
+    % Outputs:
+    %   theta = [alpha; beta; sigma_alpha]
+    %   fval = value of objective function evaluated at theta
+
     % construct matrix of BLP instruments
     Z = abs(eye(prodcount) - 1);   % matrix with 1 on off diagonal
     Z = repmat({Z}, mktcount, 1);  % selects other products in market
@@ -42,7 +45,7 @@ function [theta, fval] = blpdemand(prices, prods, shares, cost, prodcount, mktco
 
     options = optimset('Display', 'iter');
     estimator = @(s) gmmobj(s, deltas, prices, prods, Z, W, shares, nu);
-    [sigma, fval] = fminunc(estimator, lognrnd(0,1), options);
+    [s, fval] = fminunc(estimator, lognrnd(0,1), options);
 
     function [fval, grad] = gmmobj(sigma, deltas, prices, X, Z, W, shares, nu)
         % GMMOBJ Objective function for BLP random coefficients model
@@ -66,6 +69,7 @@ function [theta, fval] = blpdemand(prices, prods, shares, cost, prodcount, mktco
         price_utility = sigma * bsxfun(@times, nu, prices);  % price disutility
         sharefunc = @(d) deltashares(d, price_utility, prodcount);  % simulator
         
+        % TODO: adjust tolerance based on change in objective function
         % find deltas using the share simulator
         tolerance = 2e-10;
         deltas = innerloop(deltas, shares, sharefunc, tolerance);
