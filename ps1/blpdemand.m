@@ -57,6 +57,9 @@ function [theta, fval] = blpdemand(prices, prods, shares, cost, prodcount, mktco
         %   fval = value of the objective function
         %   grad = gradient for speedy computation
        
+        % sigma must be a positive number
+        sigma = exp(sigma);
+
         % create a simulator for market shares that can calculate shares for
         % different values of delta (the d variable); this is used to equate 
         % the observed shares with simulated shares and thereby find deltas.
