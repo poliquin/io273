@@ -43,7 +43,7 @@ function [theta, fval] = blpdemand(prices, prods, shares, cost, prodcount, mktco
     % initial weighting matrix
     W = ([Z, prods]' * [Z, prods]) \ eye(size([Z, prods], 2));
 
-    options = optimset('Display', 'iter');
+    options = optimset('Display', 'iter', 'TolFun', 10e-10);
     estimator = @(s) gmmobj(s, deltas, prices, prods, Z, W, shares, nu);
     [s, fval] = fminunc(estimator, lognrnd(0,1), options);
 
@@ -71,7 +71,7 @@ function [theta, fval] = blpdemand(prices, prods, shares, cost, prodcount, mktco
         
         % TODO: adjust tolerance based on change in objective function
         % find deltas using the share simulator
-        tolerance = 2e-10;
+        tolerance = 2e-12;
         deltas = innerloop(deltas, shares, sharefunc, tolerance);
         
         % make sure deltas are defined, otherwise set high objective value
