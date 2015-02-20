@@ -65,7 +65,7 @@ function [shares, prices, products, profits, surplus, xi, W] = mktsim(j, m)
 
             [simulated_shares, simulated_surplus] = simshare(U);
             % Check if model solved with positive prices and shares
-            if fval < 10^-4 & P > 0 & simulated_shares > 0
+            if fval < 10^-4 & P > 0 & sum(simulated_shares) > 0
                 % found a workable solution for market k
                 % solve for profits
                 profit_k = (P - MC) .* (N * simulated_shares);
