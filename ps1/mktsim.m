@@ -1,4 +1,4 @@
-function [shares, prices, products, profits, surplus, xi] = mktsim(j, m)
+function [shares, prices, products, profits, surplus, xi, W] = mktsim(j, m)
     %MKTSIM Draw j products in m markets for BLP simulation.
     %   Simulate 500 individuals per market for m markets with j products,
     %   creating characteristics, cost shifters, prices, and market shares.
@@ -12,6 +12,7 @@ function [shares, prices, products, profits, surplus, xi] = mktsim(j, m)
     %   jXm by 1 vector of profits
     %     m by 1 vector of total consumer surplus for each market
     %   jXm by 1 vector of unobserved characteristics
+    %     j by 1 vector of firm-specific marginal cost shifters
     % Population parameters
     N = 2000;          % number of consumers
     ALPHA = 1;         % population constant price sensitivity
@@ -51,7 +52,7 @@ function [shares, prices, products, profits, surplus, xi] = mktsim(j, m)
             % Market-specific marginal cost variables
             Z = normrnd(0, 1, j, 1);
             eta = normrnd(0, 1, j, 1);
-            MC = [ones(j, 1), W, Z] * GAMMA + eta; 
+            MC = 0.2 * exp([ones(j, 1), W, Z] * GAMMA + eta); 
 
             % Nash equilibrium in market k
             firmobj = @(P) equilibrium(P, BETA, X, MC, alpha_i, xi_k);

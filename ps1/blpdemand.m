@@ -1,12 +1,26 @@
-function [theta, fval] = blpdemand(prices, prods, shares, prodcount, mktcount)
+function [theta, fval] = blpdemand(prices, prods, shares, cost, prodcount, mktcount)
     % BLP Estimation of model from BLP (1995)
-    %
+    % Input arguments:
+    %   prices = mXj by 1 vector of prices for each product-market combination
+    %   prods  = mXj by 3 vector of product characteristics
+    %   shares = mXj by 1 vector of market shares
+    %   cost   =   j by 1 vector of firm-level marginal cost shifters
+    %   prodcount = number of products
+    %   mktcount  = number of markets
     
     % construct matrix of BLP instruments
     Z = abs(eye(prodcount) - 1);   % matrix with 1 on off diagonal
     Z = repmat({Z}, mktcount, 1);  % selects other products in market
     Z = blkdiag(Z{:}) * prods;  % sum of other product characteristics
- 
+    % remove the first instrument, which does not vary across markets
+    % because all markets have the same number of products.
+    Z = Z(:, 2:3);
+
+    % add marginal cost shifters to the instrument matrix
+    cost = repmat(cost, mktcount, 1);
+    % uncomment below to add the cost shifter
+    %Z = [cost, Z];
+
     % this is the Nevo instrument
     totprice = repmat(eye(prodcount), 1, mktcount) * prices;
     avgprice = (1/(mktcount - 1))*(repmat(totprice, mktcount, 1) - prices);
