@@ -36,8 +36,8 @@ function [theta, fval] = blpdemand(prices, prods, shares, cost, prodcount, mktco
     logit_shr = reshape(bsxfun(@minus, share_mat, out_share), [], 1);
     [coef, deltas, resid] = logit(logit_shr, [prices, prods], [Z, prods]);
     
-    % draw 500 consumers for each market, held constant over simulation
-    nu = lognrnd(0, 1, mktcount, 500);
+    % draw 1500 consumers for each market, held constant over simulation
+    nu = lognrnd(0, 1, mktcount, 1500);
     nu = kron(nu, ones(prodcount, 1));  % replicate draws for each product
 
     % initial weighting matrix
