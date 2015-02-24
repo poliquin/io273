@@ -33,21 +33,29 @@ function [theta, fval] = blpdemand(prices, prods, shares, cost, prodcount, mktco
     % find an initial value for delta using logit model
     share_mat = reshape(shares, prodcount, []);  % markets by products matrix
     out_share = 1 - sum(share_mat);  % share of outside option
-    logit_shr = reshape(bsxfun(@minus, share_mat, out_share), [], 1);
-    [coef, deltas, resid] = logit(logit_shr, [prices, prods], [Z, prods]);
+    
+    % Nevo menions setting delta0 to the one that solves the logit equation
+    % log(s_jt) - log(s_0t);
+    deltas = log(share_mat ./ repmat(out_share,3,1));
+    deltas = reshape(deltas,1,[])';
+    
+%     logit_shr = reshape(bsxfun(@minus, share_mat, out_share), [], 1);
+%     [coef, deltas, resid] = logit(logit_shr, [prices, prods], [Z, prods]);
     
     % draw 1500 consumers for each market, held constant over simulation
     nu = lognrnd(0, 1, mktcount, 1500);
     nu = kron(nu, ones(prodcount, 1));  % replicate draws for each product
 
     % initial weighting matrix
+    % TODO: Change weighting matrix at each iteration
     W = ([Z, prods]' * [Z, prods]) \ eye(size([Z, prods], 2));
-
-    options = optimset('Display', 'iter', 'TolFun', 10e-10);
-    estimator = @(s) gmmobj(s, deltas, prices, prods, Z, W, shares, nu);
+    
+    tolerance = 1e-12;
+    options = optimset('Display', 'iter', 'TolFun', tolerance);
+    estimator = @(s) gmmobj(s, deltas, prices, prods, Z, W, shares, nu,tolerance);
     [s, fval] = fminunc(estimator, lognrnd(0,1), options);
 
-    function [fval, grad] = gmmobj(sigma, deltas, prices, X, Z, W, shares, nu)
+    function [fval, grad] = gmmobj(sigma, deltas, prices, X, Z, W, shares, nu,tolerance)
         % GMMOBJ Objective function for BLP random coefficients model
         % Input arguments:
         %   theta = model parameters [beta; alpha; sigma_alpha]
@@ -71,7 +79,7 @@ function [theta, fval] = blpdemand(prices, prods, shares, cost, prodcount, mktco
         
         % TODO: adjust tolerance based on change in objective function
         % find deltas using the share simulator
-        tolerance = 2e-12;
+        %tolerance = 2e-14;
         deltas = innerloop(deltas, shares, sharefunc, tolerance);
         
         % make sure deltas are defined, otherwise set high objective value
