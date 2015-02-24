@@ -42,8 +42,8 @@ function [theta, fval] = blpdemand(prices, prods, shares, cost, prodcount, mktco
 %     logit_shr = reshape(bsxfun(@minus, share_mat, out_share), [], 1);
 %     [coef, deltas, resid] = logit(logit_shr, [prices, prods], [Z, prods]);
     
-    % draw 1500 consumers for each market, held constant over simulation
-    nu = lognrnd(0, 1, mktcount, 1500);
+    % draw 500 consumers for each market, held constant over simulation
+    nu = lognrnd(0, 1, mktcount, 500);
     nu = kron(nu, ones(prodcount, 1));  % replicate draws for each product
 
     % initial weighting matrix
@@ -51,11 +51,12 @@ function [theta, fval] = blpdemand(prices, prods, shares, cost, prodcount, mktco
     W = ([Z, prods]' * [Z, prods]) \ eye(size([Z, prods], 2));
     
     tolerance = 1e-12;
-    options = optimset('Display', 'iter', 'TolFun', tolerance);
-    estimator = @(s) gmmobj(s, deltas, prices, prods, Z, W, shares, nu,tolerance);
-    [s, fval] = fminunc(estimator, lognrnd(0,1), options);
+    options = optimset('Display', 'iter', 'TolFun', tolerance, ...
+                       'GradObj', 'on', 'DerivativeCheck', 'on');
+    estimator = @(s) gmmobj(s, deltas, prices, prods, Z, W, shares, nu, tolerance);
+    [s, fval, grad] = fminunc(estimator, lognrnd(0,1), options);
 
-    function [fval, grad] = gmmobj(sigma, deltas, prices, X, Z, W, shares, nu,tolerance)
+    function [fval, grad] = gmmobj(sigma, deltas, prices, X, Z, W, shares, nu, tolerance)
         % GMMOBJ Objective function for BLP random coefficients model
         % Input arguments:
         %   theta = model parameters [beta; alpha; sigma_alpha]
@@ -75,11 +76,10 @@ function [theta, fval] = blpdemand(prices, prods, shares, cost, prodcount, mktco
         % different values of delta (the d variable); this is used to equate 
         % the observed shares with simulated shares and thereby find deltas.
         price_utility = sigma * bsxfun(@times, nu, prices);  % price disutility
-        sharefunc = @(d) deltashares(d, price_utility, prodcount);  % simulator
+        sharefunc = @(d) deltashares(d, price_utility, prodcount, mktcount);
         
         % TODO: adjust tolerance based on change in objective function
         % find deltas using the share simulator
-        %tolerance = 2e-14;
         deltas = innerloop(deltas, shares, sharefunc, tolerance);
         
         % make sure deltas are defined, otherwise set high objective value
@@ -94,8 +94,10 @@ function [theta, fval] = blpdemand(prices, prods, shares, cost, prodcount, mktco
         % compute value of the objective function
         fval = xi' * [Z, X] * W * [Z, X]' * xi;
         
-        if nargout > 2
-            grad = 0;  % TODO: compute gradient of objective function
+        if nargout > 1
+            % find the jacobian, then calculate gradient of objective function
+            jac = jacob(deltas, sigma, prices, nu, prodcount, mktcount);
+            grad = 2 * jac' * [Z, X] * W * [Z, X]' * xi;
         end
     
         % save latest parameter values
