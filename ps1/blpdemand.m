@@ -8,8 +8,8 @@ function [theta, fval] = blpdemand(prices, prods, shares, cost, ...
     %   cost   =   j by 1 vector of firm-level marginal cost shifters
     %   prodcount = number of products
     %   mktcount  = number of markets
-    %   usegrad = true means use analytic gradient of objective function in
-    %             optimization routine
+    %   usegrad   = true means use analytic gradient of objective function in
+    %               optimization routine
     % Outputs:
     %   theta = [alpha; beta; sigma_alpha]
     %   fval = value of objective function evaluated at theta
@@ -39,11 +39,10 @@ function [theta, fval] = blpdemand(prices, prods, shares, cost, ...
     
     % Nevo menions setting delta0 to the one that solves the logit equation
     % log(s_jt) - log(s_0t);
-    deltas = log(share_mat ./ repmat(out_share,3,1));
-    deltas = reshape(deltas,1,[])';
-    
-%     logit_shr = reshape(bsxfun(@minus, share_mat, out_share), [], 1);
-%     [coef, deltas, resid] = logit(logit_shr, [prices, prods], [Z, prods]);
+    deltas = log(share_mat ./ repmat(out_share, 3, 1));
+    deltas = reshape(deltas, 1, [])';
+    % uncomment below to estimate the logit model
+    %[coef, ~, ~] = logit(logit_shr, [prices, prods], [Z, prods]);
     
     % draw 500 consumers for each market, held constant over simulation
     nu = lognrnd(0, 1, mktcount, 500);
@@ -56,8 +55,10 @@ function [theta, fval] = blpdemand(prices, prods, shares, cost, ...
     tolerance = 1e-12;
     estimator = @(s) gmmobj(s, deltas, prices, prods, Z, W, shares, nu, tolerance);
     options = optimset('Display', 'iter', 'TolFun', tolerance);
-    if usegrad
-        options = optimset(options, 'GradObj', 'on'); %, 'DerivativeCheck', 'on');
+    if usegrad  % use the gradient info in optimization routine
+        options = optimset(options, 'GradObj', 'on');
+        % uncomment below to check derivative against finite difference
+        %options = optimset(options, 'DerivativeCheck', 'on');
         [s, fval, grad] = fminunc(estimator, lognrnd(0,1), options);
     else
         [s, fval] = fminunc(estimator, lognrnd(0,1), options);

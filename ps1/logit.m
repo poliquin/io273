@@ -9,9 +9,9 @@ function [coef, predict, resid] = logit(Y, X, Z, W)
 
     % calculate coefficients using instrumental variables regression
     if nargin < 4
-        [coef resid] = ivreg(Y, X, Z);
+        [coef, resid] = ivreg(Y, X, Z);
     else
-        [coef resid] = ivreg(Y, X, Z, W);
+        [coef, resid] = ivreg(Y, X, Z, W);
     end
     % find predicted values
     predict = X * coef;
