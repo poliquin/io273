@@ -21,15 +21,12 @@ function [jac] = jacob(deltas, sigma, prices, nu, prodcount, mktcount)
     
     %% calculate probability each consumer chooses each product
     % ------------------------------------------------------------------------
+    % TODO: do not repeat code from deltashares.m, should share a function
     prutil = sigma * bsxfun(@times, nu, prices);  % price disutility
-    utils = exp(bsxfun(@minus, deltas, prutil));  % exponentiated utility
-    
-    % group the observations into cells by market and simulated consumer
-    % so that purchase probability can be calculated within consumer
-    utils = mat2cell(utils, prodcount*ones(mktcount, 1), ones(N, 1));
-    share = @(x) x ./ (1 + sum(x));  % calculate purchase probability
-    probs = cellfun(share, utils, 'UniformOutput', false);
-    probs = cell2mat(probs);
+    u = bsxfun(@minus, deltas, prutil);
+    tops = exp(reshape(u, prodcount, []));
+    bottom = 1 + sum(tops);
+    probs = reshape(bsxfun(@rdivide, tops, bottom), size(deltas, 1), []);
     
     %% (dsdj) partial derivative of share j with respect to delta j
     % ------------------------------------------------------------------------
@@ -37,26 +34,21 @@ function [jac] = jacob(deltas, sigma, prices, nu, prodcount, mktcount)
 
     %% (dsdm) partial derivative of share j with respect to delta m
     % ------------------------------------------------------------------------
-    % group the observations into cells by market and simulated consumer
-    consumers = mat2cell(probs, prodcount*ones(mktcount, 1), ones(N, 1));
-    % multiply each purchase probability by the other purchase probabilities
-    cprods = cellfun(@(x) kron(x, x), consumers, 'UniformOutput', false);
-    % calculate the mean of these products across consumers
-    mus = mean(cell2mat(cprods), 2);
-    % group the means by market, products in row and a single column
-    mus = mat2cell(mus, prodcount*prodcount*ones(mktcount, 1), 1);
-    % reshape the means into a product by product matrix in which
-    % element (j, m) equals partial derivative of share j with respect
-    % to delta m for j not equal to m.
-    mu_reshaper = @(x) reshape(x, prodcount, prodcount);
-    dsdm = cellfun(mu_reshaper, mus, 'UniformOutput', false);
-
+    % group the observations into cells by market
+    mktcells = mat2cell(probs, prodcount*ones(mktcount, 1), N);
+    % get the possible combinations of 2 products (prodcount choose 2)
+    combos = nchoosek(1:prodcount, 2)';
+    % function that picks pairs of products from purchase probability matrix,
+    % multiplies the shares, and takes mean across consumers
+    dsdm_mean = @(x, mc) mean(prod(mc(combos(:,x), :)));
+    dsdm_product = @(mc) arrayfun(@(x) dsdm_mean(x, mc), 1:prodcount);
+    dsdm = cellfun(dsdm_product, mktcells, 'UniformOutput', false); 
+    
     %% (dsdk) partial derivative of share j with respect to sigma k
     % ------------------------------------------------------------------------
     % derivative entails multiplying product prices by shares, within consumer
     prices_x_shares = bsxfun(@times, prices, probs);
-    prices_x_shares = mat2cell(prices_x_shares, ...
-                               prodcount*ones(mktcount, 1), ones(N, 1));
+    prices_x_shares = mat2cell(prices_x_shares, prodcount*ones(mktcount, 1), N);
     % sum the shares multiplied by prices across products within each consumer
     share_summer = @(x) repmat(sum(x), prodcount, 1);
     csums = cellfun(share_summer, prices_x_shares, 'UniformOutput', false);
@@ -69,16 +61,22 @@ function [jac] = jacob(deltas, sigma, prices, nu, prodcount, mktcount)
 
     %% full derivative matrix
     % ------------------------------------------------------------------------
-    % group dsdj and dsdk elements into cells by market
-    dsdj = mat2cell(dsdj, prodcount*ones(mktcount, 1), 1);
-    dsdk = mat2cell(dsdk, prodcount*ones(mktcount, 1), 1);
+    jac = zeros(mktcount*prodcount, 1);
+    dsize = [prodcount prodcount];
     for mkt=1:mktcount
-        % for each market, put elements of cell in dsdj on diagonal of dsdm
-        dsdm{mkt, 1}(logical(eye(prodcount))) = dsdj{mkt, 1};
+        dmatrix = zeros(prodcount);
+        % first row corresponding to this market
+        i = prodcount*(mkt - 1) + 1;
+        % all rows corresponding to this market
+        mrows = i:(i + prodcount - 1);
+        % place elements from dsdm on upper triangle
+        dmatrix(sub2ind(dsize, combos(1,:), combos(2,:))) = dsdm{mkt};
+        % convert triangular matrix to symmetric matrix
+        dmatrix = dmatrix + triu(dmatrix)';
+        % put elements from dsdj on diagonal
+        dmatrix(logical(eye(prodcount))) = dsdj(mrows);
         % gradient calculation for this market
-        dsdm{mkt, 1} = -1 * inv(dsdm{mkt, 1}) * dsdk{mkt, 1};
-    end
-    % multiply negative inverse of above by dsdk
-    jac = cell2mat(dsdm);
+        jac(mrows) = -1 * dmatrix\dsdk(mrows);
+    end 
 
 end

@@ -57,7 +57,7 @@ function [theta, fval] = blpdemand(prices, prods, shares, cost, ...
     estimator = @(s) gmmobj(s, deltas, prices, prods, Z, W, shares, nu, tolerance);
     options = optimset('Display', 'iter', 'TolFun', tolerance);
     if usegrad
-        options = optimset(options, 'GradObj', 'on', 'DerivativeCheck', 'on');
+        options = optimset(options, 'GradObj', 'on'); %, 'DerivativeCheck', 'on');
         [s, fval, grad] = fminunc(estimator, lognrnd(0,1), options);
     else
         [s, fval] = fminunc(estimator, lognrnd(0,1), options);
