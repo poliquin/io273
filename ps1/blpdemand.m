@@ -1,4 +1,5 @@
-function [theta, fval] = blpdemand(prices, prods, shares, cost, prodcount, mktcount)
+function [theta, fval] = blpdemand(prices, prods, shares, cost, ...
+        prodcount, mktcount, usegrad)
     % BLP Estimation of model from BLP (1995)
     % Input arguments:
     %   prices = mXj by 1 vector of prices for each product-market combination
@@ -7,6 +8,8 @@ function [theta, fval] = blpdemand(prices, prods, shares, cost, prodcount, mktco
     %   cost   =   j by 1 vector of firm-level marginal cost shifters
     %   prodcount = number of products
     %   mktcount  = number of markets
+    %   usegrad = true means use analytic gradient of objective function in
+    %             optimization routine
     % Outputs:
     %   theta = [alpha; beta; sigma_alpha]
     %   fval = value of objective function evaluated at theta
@@ -51,10 +54,14 @@ function [theta, fval] = blpdemand(prices, prods, shares, cost, prodcount, mktco
     W = ([Z, prods]' * [Z, prods]) \ eye(size([Z, prods], 2));
     
     tolerance = 1e-12;
-    options = optimset('Display', 'iter', 'TolFun', tolerance, ...
-                       'GradObj', 'on', 'DerivativeCheck', 'on');
     estimator = @(s) gmmobj(s, deltas, prices, prods, Z, W, shares, nu, tolerance);
-    [s, fval, grad] = fminunc(estimator, lognrnd(0,1), options);
+    options = optimset('Display', 'iter', 'TolFun', tolerance);
+    if usegrad
+        options = optimset(options, 'GradObj', 'on', 'DerivativeCheck', 'on');
+        [s, fval, grad] = fminunc(estimator, lognrnd(0,1), options);
+    else
+        [s, fval] = fminunc(estimator, lognrnd(0,1), options);
+    end
 
     function [fval, grad] = gmmobj(sigma, deltas, prices, X, Z, W, shares, nu, tolerance)
         % GMMOBJ Objective function for BLP random coefficients model
@@ -76,7 +83,7 @@ function [theta, fval] = blpdemand(prices, prods, shares, cost, prodcount, mktco
         % different values of delta (the d variable); this is used to equate 
         % the observed shares with simulated shares and thereby find deltas.
         price_utility = sigma * bsxfun(@times, nu, prices);  % price disutility
-        sharefunc = @(d) deltashares(d, price_utility, prodcount, mktcount);
+        sharefunc = @(d) deltashares(d, price_utility, prodcount);
         
         % TODO: adjust tolerance based on change in objective function
         % find deltas using the share simulator
