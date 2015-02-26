@@ -1,4 +1,4 @@
-function [theta, fval] = blpdemand(prices, prods, shares, cost, ...
+function [theta, vcov, fval] = blpdemand(prices, prods, shares, cost, ...
         prodcount, mktcount, usegrad)
     % BLP Estimation of model from BLP (1995)
     % Input arguments:
@@ -63,6 +63,7 @@ function [theta, fval] = blpdemand(prices, prods, shares, cost, ...
     else
         [s, fval] = fminunc(estimator, lognrnd(0,1), options);
     end
+    vcov = stderr(exp(s), prods, Z, W);
 
     function [fval, grad] = gmmobj(sigma, deltas, prices, X, Z, W, shares, nu, tolerance)
         % GMMOBJ Objective function for BLP random coefficients model
@@ -110,6 +111,25 @@ function [theta, fval] = blpdemand(prices, prods, shares, cost, ...
     
         % save latest parameter values
         theta = [betas; sigma];
+    end
+
+    function [V1] = stderr(deltas, sigma)
+        % STDERR Calculate standard errors for BLP parameter estimates
+        %   This code follows Nevo's example code.
+
+        % derivative of share delta function with respect to sigma
+        D = jacob(deltas, sigma, prices, nu, prodcount, mktcount);
+        % calculate first portion of matrix
+        IV = [Z, prods];  % full instrument matrix
+        Q = [prods, D]' * IV;
+        % calculate matrix that gets inverted
+        B = inv(Q * W * Q');
+        % calculate interaction of instrument matrix and residuals
+        [betas, xi] = ivreg(deltas, [prices, prods], [Z, prods], W);
+        S = IV .* (xi * ones(1, size(IV, 2)));
+        % calculate V1 from BLP (1995)
+        % TODO: is this V1, or full covariance matrix using just V1?
+        V1 = B * Q * W * S' * S * W * Q' * B;
     end
 end
 

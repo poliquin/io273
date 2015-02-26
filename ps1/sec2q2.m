@@ -11,4 +11,5 @@ prods(shares == 0, :) = 0;
 % ----------------------------------------------------------------------------
 % last parameter is whether to use jacobian during minimization of the
 % objective function; doing so reduces time to convergence.
-[theta, fval] = blpdemand(prices, prods, shares, cost, 3, 100, true)
+[theta, vcov, fval] = blpdemand(prices, prods, shares, cost, 3, 100, true);
+
