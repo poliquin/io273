@@ -94,10 +94,19 @@ function [theta, vcov, fval] = blpdemand(prices, prods, shares, cost, ...
         % different values of delta (the d variable); this is used to equate 
         % the observed shares with simulated shares and thereby find deltas.
         price_utility = sigma * bsxfun(@times, nu, prices);  % price disutility
-        sharefunc = @(d) deltashares(d, price_utility, prodcount);
+        
+        % Reshape variables for inner loop
+        price_utility_inner = reshape(price_utility,prodcount,[]);
+        deltas_inner = reshape(deltas,prodcount,[]);
+        shares_inner = reshape(shares,prodcount,[]);
+        
+        sharefunc = @(d) deltashares(d, price_utility_inner, prodcount);
         
         % find deltas using the share simulator
         deltas = innerloop(deltas, shares, sharefunc, innertol);
+%       deltas_inner = innerloop(deltas_inner, shares_inner, sharefunc, innertol);
+        % Reshape deltas back
+%       deltas = deltas_inner(:);
         
         % make sure deltas are defined, otherwise set high objective value
         if any(isnan(deltas)) == 1
