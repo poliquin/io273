@@ -14,6 +14,15 @@ function [theta, vcov, fval] = blpdemand(prices, prods, shares, cost, ...
     %   theta = [alpha; beta; sigma_alpha]
     %   vocv = variance covariance matrix for theta
     %   fval = value of objective function evaluated at theta
+    disp(' ')
+    disp(' ')
+    disp('***** WARNING *****')
+    disp('The code you are running incorrectly assumes price is exogenous.')
+    disp('This exists to answer section 2, question 3 of the problem set.')
+    disp('See master branch (git checkout master) for correct BLP code.')
+    disp(' ')
+    disp(' ')
+
     global deltas;
 
     %% construct matrix of BLP instruments
@@ -53,8 +62,7 @@ function [theta, vcov, fval] = blpdemand(prices, prods, shares, cost, ...
     nu = kron(nu, ones(prodcount, 1));  % replicate draws for each product
 
     % initial weighting matrix
-    % TODO: Change weighting matrix at each iteration
-    W = ([Z, prods]' * [Z, prods]) \ eye(size([Z, prods], 2));
+    W = inv([prices, Z, prods]' * [prices, Z, prods]);
     
     %% Run estimation routine
     % ------------------------------------------------------------------------
@@ -116,16 +124,16 @@ function [theta, vcov, fval] = blpdemand(prices, prods, shares, cost, ...
 
         %% Estimate non-random coefficients and unobservables
         % --------------------------------------------------------------------
-        [betas, xi] = ivreg(deltas, [prices, X], [Z, X], W);
+        [betas, xi] = ivreg(deltas, [prices, X], [prices, Z, X], W);
     
         %% Compute value of the objective function
         % --------------------------------------------------------------------
-        fval = xi' * [Z, X] * W * [Z, X]' * xi;
+        fval = xi' * [prices, Z, X] * W * [prices, Z, X]' * xi;
         
         if nargout > 1
             % find the jacobian, then calculate gradient of objective function
             jac = jacob(deltas, sigma, prices, nu, prodcount, mktcount);
-            grad = 2 * jac' * [Z, X] * W * [Z, X]' * xi;
+            grad = 2 * jac' * [prices, Z, X] * W * [prices, Z, X]' * xi;
         end
     
         % save latest parameter values
@@ -139,12 +147,12 @@ function [theta, vcov, fval] = blpdemand(prices, prods, shares, cost, ...
         % derivative of share delta function with respect to sigma
         D = jacob(deltas, sigma, prices, nu, prodcount, mktcount);
         % calculate first portion of matrix
-        IV = [Z, prods];  % full instrument matrix
+        IV = [prices, Z, prods];  % full instrument matrix
         Q = [prices, prods, D]' * IV;
         % calculate inverse of gamma' * gamma, see page 858 of BLP (1995)
         B = inv(Q * W * Q');
         % calculate interaction of instrument matrix and residuals
-        [~, xi] = ivreg(deltas, [prices, prods], [Z, prods], W);
+        [~, xi] = ivreg(deltas, [prices, prods], [prices, Z, prods], W);
         % calculate V1 from page 858 of BLP (1995)
         S = IV .* (xi * ones(1, size(IV, 2)));
         V1 = S' * S;
