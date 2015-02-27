@@ -13,6 +13,7 @@ function [theta, vcov, fval] = blpdemand(prices, prods, shares, cost, ...
     % Outputs:
     %   theta = [alpha; beta; sigma_alpha]
     %   fval = value of objective function evaluated at theta
+    global deltas;
 
     % construct matrix of BLP instruments
     Z = abs(eye(prodcount) - 1);   % matrix with 1 on off diagonal
@@ -53,7 +54,7 @@ function [theta, vcov, fval] = blpdemand(prices, prods, shares, cost, ...
     W = ([Z, prods]' * [Z, prods]) \ eye(size([Z, prods], 2));
     
     tolerance = 1e-12;
-    estimator = @(s) gmmobj(s, deltas, prices, prods, Z, W, shares, nu, tolerance);
+    estimator = @(s) gmmobj(s, prices, prods, Z, W, shares, nu, tolerance);
     options = optimset('Display', 'iter', 'TolFun', tolerance);
     if usegrad  % use the gradient info in optimization routine
         options = optimset(options, 'GradObj', 'on');
@@ -63,9 +64,9 @@ function [theta, vcov, fval] = blpdemand(prices, prods, shares, cost, ...
     else
         [s, fval] = fminunc(estimator, lognrnd(0,1), options);
     end
-    vcov = stderr(exp(s), prods, Z, W);
+    vcov = stderr(exp(s));
 
-    function [fval, grad] = gmmobj(sigma, deltas, prices, X, Z, W, shares, nu, tolerance)
+    function [fval, grad] = gmmobj(sigma, prices, X, Z, W, shares, nu, tolerance)
         % GMMOBJ Objective function for BLP random coefficients model
         % Input arguments:
         %   theta = model parameters [beta; alpha; sigma_alpha]
@@ -113,7 +114,7 @@ function [theta, vcov, fval] = blpdemand(prices, prods, shares, cost, ...
         theta = [betas; sigma];
     end
 
-    function [V1] = stderr(deltas, sigma)
+    function [vcov] = stderr(sigma)
         % STDERR Calculate standard errors for BLP parameter estimates
         %   This code follows Nevo's example code.
 
@@ -121,15 +122,16 @@ function [theta, vcov, fval] = blpdemand(prices, prods, shares, cost, ...
         D = jacob(deltas, sigma, prices, nu, prodcount, mktcount);
         % calculate first portion of matrix
         IV = [Z, prods];  % full instrument matrix
-        Q = [prods, D]' * IV;
-        % calculate matrix that gets inverted
+        Q = [prices, prods, D]' * IV;
+        % calculate inverse of gamma' * gamma, see page 858 of BLP (1995)
         B = inv(Q * W * Q');
         % calculate interaction of instrument matrix and residuals
         [betas, xi] = ivreg(deltas, [prices, prods], [Z, prods], W);
+        % calculate V1 from page 858 of BLP (1995)
         S = IV .* (xi * ones(1, size(IV, 2)));
-        % calculate V1 from BLP (1995)
-        % TODO: is this V1, or full covariance matrix using just V1?
-        V1 = B * Q * W * S' * S * W * Q' * B;
+        V1 = S' * S;
+        % covariance matrix using just V1
+        vcov = B * Q * W * V1 * W * Q' * B;
     end
 end
 
