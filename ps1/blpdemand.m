@@ -52,8 +52,8 @@ function [theta, fval] = blpdemand(prices, prods, shares, cost, ...
     % TODO: Change weighting matrix at each iteration
     W = ([Z, prods]' * [Z, prods]) \ eye(size([Z, prods], 2));
     
-    tolerance = 1e-12;
-    estimator = @(s) gmmobj(s, deltas, prices, prods, Z, W, shares, nu, tolerance);
+    tolerance = 1e-14;
+    estimator = @(s) gmmobj(s, prices, prods, Z, W, shares, nu, tolerance);
     options = optimset('Display', 'iter', 'TolFun', tolerance);
     if usegrad  % use the gradient info in optimization routine
         options = optimset(options, 'GradObj', 'on');
@@ -63,8 +63,26 @@ function [theta, fval] = blpdemand(prices, prods, shares, cost, ...
     else
         [s, fval] = fminunc(estimator, lognrnd(0,1), options);
     end
-
-    function [fval, grad] = gmmobj(sigma, deltas, prices, X, Z, W, shares, nu, tolerance)
+    
+    % Calculate new weight matrix 
+    theta
+    omega = deltas - [prices, prods] * theta(1:4) ;
+    W = ([Z, prods]'* omega * omega' * [Z, prods]) \ eye(size([Z, prods],2));
+%     W = W / 1e31;
+    
+    % Optimize again
+    estimator = @(s) gmmobj(s, prices, prods, Z, W, shares, nu, tolerance);
+    options = optimset(options, 'TolX',tolerance);
+    if usegrad  % use the gradient info in optimization routine
+        options = optimset(options, 'GradObj', 'on');
+        % uncomment below to check derivative against finite difference
+        %options = optimset(options, 'DerivativeCheck', 'on');
+        [s, fval, grad] = fminunc(estimator, lognrnd(0,1), options);
+    else
+        [s, fval] = fminunc(estimator, lognrnd(0,1), options);
+    end
+    
+    function [fval, grad] = gmmobj(sigma, prices, X, Z, W, shares, nu, tolerance)
         % GMMOBJ Objective function for BLP random coefficients model
         % Input arguments:
         %   theta = model parameters [beta; alpha; sigma_alpha]
@@ -76,6 +94,7 @@ function [theta, fval] = blpdemand(prices, prods, shares, cost, ...
         % Outputs:
         %   fval = value of the objective function
         %   grad = gradient for speedy computation
+        %   deltas = returns the final delta
        
         % sigma must be a positive number
         sigma = exp(sigma);

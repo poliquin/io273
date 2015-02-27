@@ -12,15 +12,6 @@ function [shares] = deltashares(deltas, prutil, prodcount)
    
     % For each market, we take the mean over simulated consumers following
     % equation 6.10, which is the simple simulator proposed by BLP (1995).
-%     tops = exp(reshape(u, prodcount, []));
-%     bottom = 1 + sum(tops);
-%     pre_shares = reshape(bsxfun(@rdivide, tops, bottom), size(deltas, 1), []);
-%     shares = mean(pre_shares,2);
-%     
-%     
-%     u = bsxfun(@minus, deltas, prutil);
-    
-    
     tops = exp(repmat(deltas,1,500) - prutil);
     bottom = 1 + sum(tops);
     pre_shares = reshape(bsxfun(@rdivide, tops, bottom), prodcount ... 

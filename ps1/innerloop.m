@@ -20,17 +20,4 @@ function [deltas] = innerloop(start_deltas, shares, sharefunc, tolerance)
         end
         old_deltas = deltas;
     end
-
-%     w_old = exp(start_deltas);
-%     old_deltas = start_deltas;
-%     while 1
-%         w = w_old .* (shares ./ sharefunc(old_deltas));
-%         old_deltas = log(w);
-%         % check if we have converged on values for delta
-%         if (max(abs(w ./ w_old)) < exp(tolerance))
-%             deltas = log(w);
-%             break
-%         end
-%         w_old = w;
-%     end
 end
