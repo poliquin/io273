@@ -65,7 +65,7 @@ function [theta, vcov, fval] = blpdemand(prices, prods, shares, cost, ...
         options = optimset(options, 'GradObj', 'on');
         % uncomment below to check derivative against finite difference
         %options = optimset(options, 'DerivativeCheck', 'on');
-        [s, fval, grad] = fminunc(estimator, lognrnd(0,1), options);
+        [s, fval, grad] = fminunc(estimator,  unifrnd(-1, 2), options);
     else
         [s, fval] = fminunc(estimator, lognrnd(0,1), options);
     end
