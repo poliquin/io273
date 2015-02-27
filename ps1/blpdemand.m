@@ -90,23 +90,23 @@ function [theta, vcov, fval] = blpdemand(prices, prods, shares, cost, ...
         % sigma must be a positive number
         sigma = exp(sigma);
 
+        %% Esimtate deltas
+        % --------------------------------------------------------------------
         % create a simulator for market shares that can calculate shares for
         % different values of delta (the d variable); this is used to equate 
         % the observed shares with simulated shares and thereby find deltas.
         price_utility = sigma * bsxfun(@times, nu, prices);  % price disutility
         
-        % Reshape variables for inner loop
-        price_utility_inner = reshape(price_utility,prodcount,[]);
-        deltas_inner = reshape(deltas,prodcount,[]);
-        shares_inner = reshape(shares,prodcount,[]);
-        
+        % reshape variables for inner loop
+        price_utility_inner = reshape(price_utility, prodcount, []);
+        deltas_inner = reshape(deltas, prodcount, []);
+        shares_inner = reshape(shares, prodcount, []);
         sharefunc = @(d) deltashares(d, price_utility_inner, prodcount);
         
         % find deltas using the share simulator
-        deltas = innerloop(deltas, shares, sharefunc, innertol);
-%       deltas_inner = innerloop(deltas_inner, shares_inner, sharefunc, innertol);
-        % Reshape deltas back
-%       deltas = deltas_inner(:);
+        deltas_in = innerloop(deltas_inner, shares_inner, sharefunc, innertol);
+        % reshape deltas back
+        deltas = deltas_in(:);
         
         % make sure deltas are defined, otherwise set high objective value
         if any(isnan(deltas)) == 1
@@ -114,10 +114,12 @@ function [theta, vcov, fval] = blpdemand(prices, prods, shares, cost, ...
             return
         end
 
-        % estimate non-random coefficients and unobservables
+        %% Estimate non-random coefficients and unobservables
+        % --------------------------------------------------------------------
         [betas, xi] = ivreg(deltas, [prices, X], [Z, X], W);
     
-        % compute value of the objective function
+        %% Compute value of the objective function
+        % --------------------------------------------------------------------
         fval = xi' * [Z, X] * W * [Z, X]' * xi;
         
         if nargout > 1
