@@ -10,7 +10,7 @@ function [deltas] = innerloop(start_deltas, shares, sharefunc, tolerance)
     % Output arguments:
     %   deltas = Values of delta found using the contraction map, with markets
     %            in rows and products in columns.
-    
+    iters = 0;
     old_deltas = start_deltas;
     while 1
         deltas = old_deltas + log(shares) - log(sharefunc(old_deltas));
@@ -19,5 +19,14 @@ function [deltas] = innerloop(start_deltas, shares, sharefunc, tolerance)
             break
         end
         old_deltas = deltas;
+        
+        % Terminate if we iterate more than 100,000 times
+        % This is for cases when we don't get convergence
+        iters = iters + 1;
+        if (iters > 1e5)
+            disp('Inner loop did not converge')
+            max(abs(deltas(:) - old_deltas(:)))
+            break
+        end
     end
 end
