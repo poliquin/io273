@@ -12,10 +12,12 @@ function [theta, vcov, fval] = blpdemand(prices, prods, shares, cost, ...
     %               optimization routine
     % Outputs:
     %   theta = [alpha; beta; sigma_alpha]
+    %   vocv = variance covariance matrix for theta
     %   fval = value of objective function evaluated at theta
     global deltas;
 
-    % construct matrix of BLP instruments
+    %% construct matrix of BLP instruments
+    % ------------------------------------------------------------------------
     Z = abs(eye(prodcount) - 1);   % matrix with 1 on off diagonal
     Z = repmat({Z}, mktcount, 1);  % selects other products in market
     Z = blkdiag(Z{:}) * prods;  % sum of other product characteristics
@@ -38,14 +40,15 @@ function [theta, vcov, fval] = blpdemand(prices, prods, shares, cost, ...
     share_mat = reshape(shares, prodcount, []);  % markets by products matrix
     out_share = 1 - sum(share_mat);  % share of outside option
     
-    % Nevo menions setting delta0 to the one that solves the logit equation
-    % log(s_jt) - log(s_0t);
+    %% Set initial deltas to the solution of logit equation
+    % ------------------------------------------------------------------------
     deltas = log(share_mat ./ repmat(out_share, 3, 1));
     deltas = reshape(deltas, 1, [])';
     % uncomment below to estimate the logit model
     %[coef, ~, ~] = logit(logit_shr, [prices, prods], [Z, prods]);
     
-    % draw 500 consumers for each market, held constant over simulation
+    %% draw 500 consumers for each market, held constant over simulation
+    % ------------------------------------------------------------------------
     nu = lognrnd(0, 1, mktcount, 500);
     nu = kron(nu, ones(prodcount, 1));  % replicate draws for each product
 
@@ -53,9 +56,11 @@ function [theta, vcov, fval] = blpdemand(prices, prods, shares, cost, ...
     % TODO: Change weighting matrix at each iteration
     W = ([Z, prods]' * [Z, prods]) \ eye(size([Z, prods], 2));
     
-    tolerance = 1e-12;
+    %% Run estimation routine
+    % ------------------------------------------------------------------------
+    tolerance = 1e-12;  % tolerance for inner loop, stricter than outer loop
     estimator = @(s) gmmobj(s, prices, prods, Z, W, shares, nu, tolerance);
-    options = optimset('Display', 'iter', 'TolFun', tolerance);
+    options = optimset('Display', 'iter', 'TolFun', 1e-10);
     if usegrad  % use the gradient info in optimization routine
         options = optimset(options, 'GradObj', 'on');
         % uncomment below to check derivative against finite difference
@@ -65,8 +70,9 @@ function [theta, vcov, fval] = blpdemand(prices, prods, shares, cost, ...
         [s, fval] = fminunc(estimator, lognrnd(0,1), options);
     end
     vcov = stderr(exp(s));
-
-    function [fval, grad] = gmmobj(sigma, prices, X, Z, W, shares, nu, tolerance)
+    
+    % ------------------------------------------------------------------------
+    function [fval, grad] = gmmobj(sigma, prices, X, Z, W, shares, nu, innertol)
         % GMMOBJ Objective function for BLP random coefficients model
         % Input arguments:
         %   theta = model parameters [beta; alpha; sigma_alpha]
@@ -75,6 +81,8 @@ function [theta, vcov, fval] = blpdemand(prices, prods, shares, cost, ...
         %   X = matrix of product characteristics
         %   Z = matrix of BLP instruments
         %   shares = mXj by 1 vector of market shares
+        %   nu = simulated consumers for each market (consumers in columns)
+        %   innertol = tolerance for inner loop
         % Outputs:
         %   fval = value of the objective function
         %   grad = gradient for speedy computation
@@ -88,9 +96,8 @@ function [theta, vcov, fval] = blpdemand(prices, prods, shares, cost, ...
         price_utility = sigma * bsxfun(@times, nu, prices);  % price disutility
         sharefunc = @(d) deltashares(d, price_utility, prodcount);
         
-        % TODO: adjust tolerance based on change in objective function
         % find deltas using the share simulator
-        deltas = innerloop(deltas, shares, sharefunc, tolerance);
+        deltas = innerloop(deltas, shares, sharefunc, innertol);
         
         % make sure deltas are defined, otherwise set high objective value
         if any(isnan(deltas)) == 1
@@ -113,7 +120,7 @@ function [theta, vcov, fval] = blpdemand(prices, prods, shares, cost, ...
         % save latest parameter values
         theta = [betas; sigma];
     end
-
+    % ------------------------------------------------------------------------
     function [vcov] = stderr(sigma)
         % STDERR Calculate standard errors for BLP parameter estimates
         %   This code follows Nevo's example code.
@@ -126,7 +133,7 @@ function [theta, vcov, fval] = blpdemand(prices, prods, shares, cost, ...
         % calculate inverse of gamma' * gamma, see page 858 of BLP (1995)
         B = inv(Q * W * Q');
         % calculate interaction of instrument matrix and residuals
-        [betas, xi] = ivreg(deltas, [prices, prods], [Z, prods], W);
+        [~, xi] = ivreg(deltas, [prices, prods], [Z, prods], W);
         % calculate V1 from page 858 of BLP (1995)
         S = IV .* (xi * ones(1, size(IV, 2)));
         V1 = S' * S;
@@ -134,4 +141,3 @@ function [theta, vcov, fval] = blpdemand(prices, prods, shares, cost, ...
         vcov = B * Q * W * V1 * W * Q' * B;
     end
 end
-
