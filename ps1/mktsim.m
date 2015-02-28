@@ -1,4 +1,4 @@
-function [shares, prices, products, profits, surplus, xi, W] = mktsim(j, m)
+function [shares, prices, prods, profits, surplus, xi, W, z, eta] = mktsim(j, m)
     %MKTSIM Draw j products in m markets for BLP simulation.
     %   Simulate 500 individuals per market for m markets with j products,
     %   creating characteristics, cost shifters, prices, and market shares.
@@ -25,10 +25,12 @@ function [shares, prices, products, profits, surplus, xi, W] = mktsim(j, m)
     % Pre-allocate space for resulting dataset
     shares = zeros(j * m, 1);    % market shares, simulated below
     prices = zeros(j * m, 1);    % prices, solved below
-    products = zeros(j * m, 3);  % characteristics, drawn below
+    prods = zeros(j * m, 3);     % characteristics, drawn below
     profits = zeros(j * m, 1);   % profit for each product/market, found below
     surplus = zeros(m, 1);       % total consumer surplus, calculated below
     xi = zeros(j * m, 1);        % unobserved characteristics
+    eta = zeros(j * m, 1);       % unobservable marginal cost component
+    z = zeros(j * m, 1);         % market-product specific cost variable
 
     % Marginal cost shifter for firm j across all markets
     W = normrnd(0, 1, j, 1);
@@ -51,8 +53,8 @@ function [shares, prices, products, profits, surplus, xi, W] = mktsim(j, m)
 
             % Market-specific marginal cost variables
             Z = normrnd(0, 1, j, 1);
-            eta = normrnd(0, 1, j, 1);
-            MC = 0.2 * exp([ones(j, 1), W, Z] * GAMMA + eta); 
+            eta_k = normrnd(0, 1, j, 1);
+            MC = 0.2 * exp([ones(j, 1), W, Z] * GAMMA + eta_k);
 
             % Nash equilibrium in market k
             firmobj = @(P) equilibrium(P, BETA, X, MC, alpha_i, xi_k);
@@ -74,12 +76,15 @@ function [shares, prices, products, profits, surplus, xi, W] = mktsim(j, m)
         end
 
         % Save simulation results for market k to dataset
-        shares(1+(k-1)*j : k*j) = simulated_shares;
-        prices(1+(k-1)*j : k*j) = P;
-        products(1+(k-1)*j : k*j, :) = X;
-        profits(1+(k-1)*j : k*j) = profit_k;
+        firstrow = 1 + (k - 1) * j; lastrow = k * j;
+        shares(firstrow:lastrow) = simulated_shares;
+        prices(firstrow:lastrow) = P;
+        prods(firstrow:lastrow, :) = X;
+        profits(firstrow:lastrow) = profit_k;
+        xi(firstrow:lastrow) = xi_k;
+        eta(firstrow:lastrow) = eta_k;
+        z(firstrow:lastrow) = Z;
         surplus(k) = simulated_surplus;
-        xi(1+(k-1)*j : k*j) = xi_k;
     end  % end simulation for market k
 end
 

@@ -1,23 +1,24 @@
-function [theta, vcov, fval] = blpdemand(prices, prods, shares, cost, ...
-        prodcount, mktcount, usegrad, usecost)
+function [theta, gammas, vcov, fval] = blpdemand(prices, prods, shares, ...
+        cost, zc, prodcount, mktcount, usegrad, usecost)
     % BLP Estimation of model from BLP (1995)
     % Input arguments:
     %   prices = mXj by 1 vector of prices for each product-market combination
     %   prods  = mXj by 3 vector of product characteristics
     %   shares = mXj by 1 vector of market shares
-    %   cost   =   j by 1 vector of firm-level marginal cost shifters
+    %   cost = j by 1 vector of firm-level marginal cost shifters
+    %   zc   = j*m by 1 vector of market and product specific cost variables
     %   prodcount = number of products
     %   mktcount  = number of markets
     %   usegrad   = true means use analytic gradient of objective function in
     %               optimization routine
-    %   usecost   = use cost-shifter moment condition in estimation
+    %   usecost   = use cost-shifter moment condition in demand estimation
     % Outputs:
     %   theta = [alpha; beta; sigma_alpha]
-    %   vocv = variance covariance matrix for theta
+    %   vcov = variance covariance matrix for theta
     %   fval = value of objective function evaluated at theta
     global deltas;
 
-    %% construct matrix of BLP instruments
+    %% construct matrix of BLP instruments for demand side
     % ------------------------------------------------------------------------
     Z = abs(eye(prodcount) - 1);   % matrix with 1 on off diagonal
     Z = repmat({Z}, mktcount, 1);  % selects other products in market
@@ -26,7 +27,7 @@ function [theta, vcov, fval] = blpdemand(prices, prods, shares, cost, ...
     % because all markets have the same number of products.
     Z = Z(:, 2:3);
 
-    % add marginal cost shifters to the instrument matrix
+    % add marginal cost shifters to the demand-side instrument matrix
     cost = repmat(cost, mktcount, 1);
     if usecost
         Z = [cost, Z];
@@ -37,13 +38,23 @@ function [theta, vcov, fval] = blpdemand(prices, prods, shares, cost, ...
     avgprice = (1/(mktcount - 1))*(repmat(totprice, mktcount, 1) - prices);
     % uncomment below to add Nevo instrument
     %Z = [avgprice, Z];
+    
+    %% construct matrix of BLP instruments for the supply side
+    % ------------------------------------------------------------------------
+    K = abs(eye(prodcount) - 1);   % matrix with 1 on off diagonal
+    K = repmat({K}, mktcount, 1);  % selects other products in market
+    K = blkdiag(K{:});
+    K1 = K * cost;  % sum of other product cost shifter
+    K2 = K * zc;     % sum of other product-market specific cost
+    K = [K1, K2];   % supply-side instruments
+    cons = ones(prodcount * mktcount, 1);
 
+    %% Set initial deltas to the solution of logit equation
+    % ------------------------------------------------------------------------
     % find an initial value for delta using logit model
     share_mat = reshape(shares, prodcount, []);  % markets by products matrix
     out_share = 1 - sum(share_mat);  % share of outside option
     
-    %% Set initial deltas to the solution of logit equation
-    % ------------------------------------------------------------------------
     deltas = log(share_mat ./ repmat(out_share, 3, 1));
     deltas = reshape(deltas, 1, [])';
     % uncomment below to estimate the logit model
@@ -107,8 +118,7 @@ function [theta, vcov, fval] = blpdemand(prices, prods, shares, cost, ...
         
         % find deltas using the share simulator
         deltas_in = innerloop(deltas_inner, shares_inner, sharefunc, innertol);
-        % reshape deltas back
-        deltas = deltas_in(:);
+        deltas = deltas_in(:);  % reshape deltas back
         
         % make sure deltas are defined, otherwise set high objective value
         if any(isnan(deltas)) == 1
@@ -116,12 +126,18 @@ function [theta, vcov, fval] = blpdemand(prices, prods, shares, cost, ...
             return
         end
 
-        %% Estimate non-random coefficients and unobservables
+        %% Estimate demand-side non-random coefficients and unobservables
         % --------------------------------------------------------------------
         [betas, xi] = ivreg(deltas, [prices, X], [Z, X], W);
+        
+        %% Calculate markups and supply-side parameters
+        % --------------------------------------------------------------------
+        marks = markup(sigma, nu, prices, deltas, shares, prodcount, mktcount);
+        [gammas, eta] = ivreg(marks, [cons, cost, zc], [cons, K]);
     
         %% Compute value of the objective function
         % --------------------------------------------------------------------
+        % TODO: include supply-side moments
         fval = xi' * [Z, X] * W * [Z, X]' * xi;
         
         if nargout > 1
@@ -138,6 +154,7 @@ function [theta, vcov, fval] = blpdemand(prices, prods, shares, cost, ...
         % STDERR Calculate standard errors for BLP parameter estimates
         %   This code follows Nevo's example code.
 
+        % TODO: find standard errors for gamma
         % derivative of share delta function with respect to sigma
         D = jacob(deltas, sigma, prices, nu, prodcount, mktcount);
         % calculate first portion of matrix
@@ -147,9 +164,8 @@ function [theta, vcov, fval] = blpdemand(prices, prods, shares, cost, ...
         B = inv(Q * W * Q');
         % calculate interaction of instrument matrix and residuals
         [~, xi] = ivreg(deltas, [prices, prods], [Z, prods], W);
-        % calculate V1 from page 858 of BLP (1995)
         S = IV .* (xi * ones(1, size(IV, 2)));
-        V1 = S' * S;
+        V1 = S' * S;  % V1 from page 858 of BLP (1995)
         % covariance matrix using just V1
         vcov = B * Q * W * V1 * W * Q' * B;
     end

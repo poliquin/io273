@@ -11,6 +11,7 @@ tabulate(shares == 0)
 shares(shares == 0) = 10e-6;
 prices(shares == 0) = 0;
 prods(shares == 0, :) = 0;
+cost(shares == 0, :) = 0;
 
 %% Run the estimation procedure using demand side moments
 % ----------------------------------------------------------------------------
