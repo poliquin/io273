@@ -1,4 +1,4 @@
-% BLP estimation with demand side moments
+% BLP estimation using demand and cost moments
 
 %% Load the (3, 100) dataset
 % ----------------------------------------------------------------------------
@@ -12,16 +12,16 @@ shares(shares == 0) = 10e-6;
 prices(shares == 0) = 0;
 prods(shares == 0, :) = 0;
 
-%% Run the estimation procedure using demand side moments
+%% Run the estimation procedure using cost and demand side moments
 % ----------------------------------------------------------------------------
-runs = 10;
+runs = 30;
 % run the procedure multiple times so that we get multiple starting values
 estimates = zeros(runs, 6);  % 6 columns: fval plus coefficients
 variances = zeros(runs, 25); % 25 columns to hold re-shaped 5x5 matrix
 for i=1:runs  % run six times
     fprintf('Run %1.0f of %1.0f', i, runs)
     [theta, vcov, fval] = blpdemand(prices, prods, shares, cost, ...
-            prodcount, mktcount, true, false);
+            prodcount, mktcount, true, true);
     estimates(i, :) = [fval, theta'];
     variances(i, :) = reshape(vcov, 1, []);
     disp(' ')
@@ -41,9 +41,9 @@ bias = theta' - [-1; 5; 1; 1; 1];
 
 % print the best estimates
 disp(' ')
-disp('(3, 100) Coefficients and Standard Errors (Demand-Side Moments)')
+disp('(3, 100) Coefficients and Standard Errors (with Cost Shifter)')
 disp(table(num2str(theta', '%3.3f &'), num2str(sqrt(diag(vcov)), '(%3.3f) &'), ...
-            num2str(bias, '%4.3f   \\\\'), ...
+            num2str(bias, '%4.3f \\\\'), ...
             'VariableNames', {'Coef' 'SE' 'Bias'}, ...
             'RowNames', {'Price  &', 'X1  &', 'X2  &', 'X3  &', 'Sigma  &'}))
 fprintf('Objective function: %i', fval)
@@ -52,7 +52,6 @@ disp(' ')
 
 %% Load the (3, 10) dataset
 % ----------------------------------------------------------------------------
-clear all
 load('data/10_3.mat')
 prodcount = 3;
 mktcount = 10;
@@ -63,16 +62,16 @@ shares(shares == 0) = 10e-6;
 prices(shares == 0) = 0;
 prods(shares == 0, :) = 0;
 
-%% Run the estimation procedure using demand side moments
+%% Run the estimation procedure using cost and demand side moments
 % ----------------------------------------------------------------------------
-runs = 10;
+runs = 30;
 % run the procedure multiple times so that we get multiple starting values
 estimates = zeros(runs, 6);  % 6 columns: fval plus coefficients
 variances = zeros(runs, 25); % 25 columns to hold re-shaped 5x5 matrix
 for i=1:runs  % run six times
     fprintf('Run %1.0f of %1.0f', i, runs)
     [theta, vcov, fval] = blpdemand(prices, prods, shares, cost, ...
-            prodcount, mktcount, true);
+            prodcount, mktcount, true, true);
     estimates(i, :) = [fval, theta'];
     variances(i, :) = reshape(vcov, 1, []);
     disp(' ')
@@ -92,7 +91,7 @@ bias = theta' - [-1; 5; 1; 1; 1];
 
 % print the best estimates
 disp(' ')
-disp('(3, 10) Coefficients and Standard Errors (Demand-Side Moments)')
+disp('(3, 10) Coefficients and Standard Errors (with Cost Shifter)')
 disp(table(num2str(theta', '%3.3f &'), num2str(sqrt(diag(vcov)), '(%3.3f) &'), ...
             num2str(bias, '%4.3f \\\\'), ...
             'VariableNames', {'Coef' 'SE' 'Bias'}, ...

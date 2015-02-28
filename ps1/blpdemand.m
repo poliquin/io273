@@ -1,5 +1,5 @@
 function [theta, vcov, fval] = blpdemand(prices, prods, shares, cost, ...
-        prodcount, mktcount, usegrad)
+        prodcount, mktcount, usegrad, usecost)
     % BLP Estimation of model from BLP (1995)
     % Input arguments:
     %   prices = mXj by 1 vector of prices for each product-market combination
@@ -10,6 +10,7 @@ function [theta, vcov, fval] = blpdemand(prices, prods, shares, cost, ...
     %   mktcount  = number of markets
     %   usegrad   = true means use analytic gradient of objective function in
     %               optimization routine
+    %   usecost   = use cost-shifter moment condition in estimation
     % Outputs:
     %   theta = [alpha; beta; sigma_alpha]
     %   vocv = variance covariance matrix for theta
@@ -27,8 +28,9 @@ function [theta, vcov, fval] = blpdemand(prices, prods, shares, cost, ...
 
     % add marginal cost shifters to the instrument matrix
     cost = repmat(cost, mktcount, 1);
-    % uncomment below to add the cost shifter
-    %Z = [cost, Z];
+    if usecost
+        Z = [cost, Z];
+    end
 
     % this is the Nevo instrument
     totprice = repmat(eye(prodcount), 1, mktcount) * prices;
