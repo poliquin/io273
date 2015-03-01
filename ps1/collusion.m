@@ -1,6 +1,6 @@
 function [marks] = collusion(sigma, nu, prices, deltas, shares, ...
         prodcount, mktcount)
-    % MONOPOLY Calculate markups assuming perfect collusion.
+    % COLLUSION  Calculate markups assuming perfect collusion.
     %   This function is used to calculate the dependent variable to estimate
     %   supply-side parameters assuming monopoly-like conduct.
     % Input arguments:

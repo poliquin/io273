@@ -1,5 +1,5 @@
 function [theta, gammas, vcov, fval] = blpdemand(prices, prods, shares, ...
-        cost, zc, prodcount, mktcount, usegrad, usecost)
+        cost, zc, prodcount, mktcount, usegrad, usecost, conduct)
     % BLP Estimation of model from BLP (1995)
     % Input arguments:
     %   prices = mXj by 1 vector of prices for each product-market combination
@@ -12,6 +12,7 @@ function [theta, gammas, vcov, fval] = blpdemand(prices, prods, shares, ...
     %   usegrad   = true means use analytic gradient of objective function in
     %               optimization routine
     %   usecost   = use cost-shifter moment condition in demand estimation
+    %   conduct   = model of firm behavior \in {oligopoly, monopoly, perfect}
     % Outputs:
     %   theta = [alpha; beta; sigma_alpha]
     %   vcov = variance covariance matrix for theta
@@ -76,7 +77,7 @@ function [theta, gammas, vcov, fval] = blpdemand(prices, prods, shares, ...
     %% Run estimation routine
     % ------------------------------------------------------------------------
     tolerance = 1e-12;  % tolerance for inner loop, stricter than outer loop
-    estimator = @(s) gmmobj(s, prices, prods, Z, shares, nu, tolerance);
+    estimator = @(s) gmmobj(s, prods, Z, tolerance, conduct);
     options = optimset('Display', 'iter', 'TolFun', 1e-10);
     if usegrad  % use the gradient info in optimization routine
         options = optimset(options, 'GradObj', 'on');
@@ -89,17 +90,14 @@ function [theta, gammas, vcov, fval] = blpdemand(prices, prods, shares, ...
     vcov = stderr(exp(s));
     
     % ------------------------------------------------------------------------
-    function [fval, grad] = gmmobj(sigma, prices, X, Z, shares, nu, innertol)
+    function [fval, grad] = gmmobj(sigma, X, Z, innertol, conduct)
         % GMMOBJ Objective function for BLP random coefficients model
         % Input arguments:
-        %   theta = model parameters [beta; alpha; sigma_alpha]
-        %   deltas = initial mXj by 1 vector of values for delta
-        %   prices = mXj by 1 vector of prices
+        %   sigma = random coefficient on price, sigma_alpha
         %   X = matrix of product characteristics
         %   Z = matrix of BLP instruments
-        %   shares = mXj by 1 vector of market shares
-        %   nu = simulated consumers for each market (consumers in columns)
         %   innertol = tolerance for inner loop
+        %   conduct = model of firm behavior {oligopoly, monopoly, perfect}
         % Outputs:
         %   fval = value of the objective function
         %   grad = gradient for speedy computation
@@ -136,7 +134,17 @@ function [theta, gammas, vcov, fval] = blpdemand(prices, prods, shares, ...
         
         %% Calculate markups and supply-side parameters
         % --------------------------------------------------------------------
-        marks = markup(sigma, nu, prices, deltas, shares, prodcount, mktcount);
+        % there are 3 possible conduct models: perfect competition, oligopoly,
+        % and perfect collusion (monopoly).
+        if conduct == 'monopoly'
+            marks = collusion(sigma, nu, prices, deltas, shares, ...
+                              prodcount, mktcount);
+        elseif conduct == 'perfect'
+            marks = log(prices); 
+        else  % oligopoly is the default
+            marks = markup(sigma, nu, prices, deltas, shares, ...
+                           prodcount, mktcount);
+        end    
         [gammas, eta] = ivreg(marks, [cons, cost, zc], [cons, K], W2);
     
         %% Compute value of the objective function
