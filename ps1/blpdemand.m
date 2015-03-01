@@ -1,4 +1,4 @@
-function [theta, vcov, fval] = blpdemand(prices, prods, shares, cost, ...
+function [theta, vcov, fval, etas] = blpdemand(prices, prods, shares, cost, ...
         prodcount, mktcount, usegrad)
     % BLP Estimation of model from BLP (1995)
     % Input arguments:
@@ -47,7 +47,7 @@ function [theta, vcov, fval] = blpdemand(prices, prods, shares, cost, ...
     % uncomment below to estimate the logit model
     %[coef, ~, ~] = logit(logit_shr, [prices, prods], [Z, prods]);
     
-    %% draw 500 consumers for each market, held constant over simulation
+    %% draw 500 consumers for EACH market, held constant over simulation
     % ------------------------------------------------------------------------
     nu = lognrnd(0, 1, mktcount, 500);
     nu = kron(nu, ones(prodcount, 1));  % replicate draws for each product
@@ -58,18 +58,33 @@ function [theta, vcov, fval] = blpdemand(prices, prods, shares, cost, ...
     
     %% Run estimation routine
     % ------------------------------------------------------------------------
-    tolerance = 1e-12;  % tolerance for inner loop, stricter than outer loop
-    estimator = @(s) gmmobj(s, prices, prods, Z, W, shares, nu, tolerance);
-    options = optimset('Display', 'iter', 'TolFun', 1e-10);
+    inner_tol = 1e-12;  % tolerance for inner loop, stricter than outer loop
+    outer_tol = 1e-10;  
+    estimator = @(s) gmmobj(s, prices, prods, Z, W, shares, nu, inner_tol);
+    options = optimset('Display', 'iter', 'TolFun', outer_tol);
     if usegrad  % use the gradient info in optimization routine
         options = optimset(options, 'GradObj', 'on');
         % uncomment below to check derivative against finite difference
         %options = optimset(options, 'DerivativeCheck', 'on');
         [s, fval, grad] = fminunc(estimator,  unifrnd(-1, 2), options);
+        
+        % Optimal weight matrix
+        omega = deltas - [prices, prods] * theta(1:4);
+        W = ([Z, prods]' * diag(omega .^2) * [Z, prods]) \ eye(size([Z,prods],2));
+        
+        % Optimize again using the new weight matrix
+        estimator = @(s) gmmobj(s, prices, prods, Z, W, shares, nu, inner_tol);
+        options = optimset(options,'TolX',1e-20); % Probably unnecessary
+        [s, fval, grad] = fminunc(estimator,  unifrnd(-1, 2), options);
     else
         [s, fval] = fminunc(estimator, lognrnd(0,1), options);
     end
+    
+    % Calculate standard errors
     vcov = stderr(exp(s));
+    
+    % Calculate elasticities
+    etas = elast(theta, nu, prods, prices, shares);
     
     % ------------------------------------------------------------------------
     function [fval, grad] = gmmobj(sigma, prices, X, Z, W, shares, nu, innertol)
@@ -150,5 +165,41 @@ function [theta, vcov, fval] = blpdemand(prices, prods, shares, cost, ...
         V1 = S' * S;
         % covariance matrix using just V1
         vcov = B * Q * W * V1 * W * Q' * B;
+    end
+
+    function result = elast(theta, nu, prods, prices, shares)
+        % ELAST Calculate elasticities for BLP
+        % Outputs:
+        %   result = 2 by prodcount * mktcount matrix of elasticities, true
+        %   on top and simulated on bottom.
+        
+        % Price disutilities (mu_ij)
+        true_mu = bsxfun(@times, nu, prices);  % price disutility
+        sim_mu = theta(5) * bsxfun(@times, nu, prices);
+        
+        % Define deltas 
+        true_delta = prods * [5;1;1] - prices;
+        sim_delta = prods * theta(2:4) - theta(1) * prices;
+        
+        % Reshape for deltashares function
+        true_delta = reshape(true_delta,prodcount,[]);
+        sim_delta = reshape(sim_delta,prodcount,[]);
+        true_mu = reshape(true_mu, prodcount, []);
+        sim_mu = reshape(sim_mu, prodcount, []);
+        
+        % Calculate f_j (BLP 6.6)     
+        f_true = deltashares(true_delta, true_mu, prodcount);
+        f_sim = deltashares(sim_delta, sim_mu, prodcount);
+        
+        % Calculate derivatives of shares wrt price (BLP 6.9a)
+        true_DS= mean(-f_true .* (1-f_true) .* nu,2);
+        sim_DS = mean(f_sim .* (1-f_sim) .* nu * theta(1),2);
+        
+        % Calculate elasticities (eta = dS/dP * P/S)
+        true_eta = true_DS .* (prices ./ shares);
+        sim_eta = sim_DS .* (prices ./ shares);
+        
+        % Compare
+        result = [true_eta; sim_eta];
     end
 end

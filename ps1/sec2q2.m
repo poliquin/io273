@@ -18,12 +18,16 @@ runs = 10;
 % run the procedure multiple times so that we get multiple starting values
 estimates = zeros(runs, 6);  % 6 columns: fval plus coefficients
 variances = zeros(runs, 25); % 25 columns to hold re-shaped 5x5 matrix
+true_etas = zeros(runs, prodcount * mktcount); % J * M columns to hold
+siml_etas = zeros(runs, prodcount * mktcount); % vectors of elasticities
 for i=1:runs  % run six times
     fprintf('Run %1.0f of %1.0f', i, runs)
-    [theta, vcov, fval] = blpdemand(prices, prods, shares, cost, ...
+    [theta, vcov, fval, etas] = blpdemand(prices, prods, shares, cost, ...
             prodcount, mktcount, true);
     estimates(i, :) = [fval, theta'];
     variances(i, :) = reshape(vcov, 1, []);
+    true_etas(i, :) = etas(1,:);
+    siml_etas(i, :) = etas(2,:);
     disp(' ')
 end
 
@@ -49,6 +53,8 @@ disp(table(num2str(theta', '%3.3f &'), num2str(sqrt(diag(vcov)), '(%3.3f) &'), .
 fprintf('Objective function: %i', fval)
 disp(' ')
 
+% print the (average) elasticities 
+
 
 %% Load the (3, 10) dataset
 % ----------------------------------------------------------------------------
@@ -71,7 +77,7 @@ estimates = zeros(runs, 6);  % 6 columns: fval plus coefficients
 variances = zeros(runs, 25); % 25 columns to hold re-shaped 5x5 matrix
 for i=1:runs  % run six times
     fprintf('Run %1.0f of %1.0f', i, runs)
-    [theta, vcov, fval] = blpdemand(prices, prods, shares, cost, ...
+    [theta, vcov, fval, etas] = blpdemand(prices, prods, shares, cost, ...
             prodcount, mktcount, true);
     estimates(i, :) = [fval, theta'];
     variances(i, :) = reshape(vcov, 1, []);
