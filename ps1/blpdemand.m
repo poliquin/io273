@@ -203,3 +203,4 @@ function [theta, vcov, fval, etas] = blpdemand(prices, prods, shares, cost, ...
         result = [true_eta; sim_eta];
     end
 end
+    
