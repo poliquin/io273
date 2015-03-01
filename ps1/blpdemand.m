@@ -41,14 +41,16 @@ function [theta, gammas, vcov, fval] = blpdemand(prices, prods, shares, ...
     
     %% construct matrix of BLP instruments for the supply side
     % ------------------------------------------------------------------------
-    K = abs(eye(prodcount) - 1);   % matrix with 1 on off diagonal
-    K = repmat({K}, mktcount, 1);  % selects other products in market
-    K = blkdiag(K{:});
-    K1 = K * cost;  % sum of other product cost shifter
-    K2 = K * zc;     % sum of other product-market specific cost
-    K = [K1, K2];   % supply-side instruments
+    K = [cost, zc];  % use the given cost-side variables
     cons = ones(prodcount * mktcount, 1);
-
+    % the following would create BLP cost-side instruments, but our cost
+    % variables are not endogenous...
+    %K = abs(eye(prodcount) - 1);   % matrix with 1 on off diagonal
+    %K = repmat({K}, mktcount, 1);  % selects other products in market
+    %K = blkdiag(K{:});
+    % supply-side instruments
+    %K = [K * cost, K * zc];  % sum of other product cost shifters
+    
     %% Set initial deltas to the solution of logit equation
     % ------------------------------------------------------------------------
     % find an initial value for delta using logit model
@@ -67,12 +69,14 @@ function [theta, gammas, vcov, fval] = blpdemand(prices, prods, shares, ...
 
     % initial weighting matrix
     % TODO: Change weighting matrix at each iteration
-    W = ([Z, prods]' * [Z, prods]) \ eye(size([Z, prods], 2));
+    W1 = inv([Z, prods]' * [Z, prods]);  % demand-side weights
+    W2 = inv([cons, K]' * [cons, K]);    % supply-side weights
+    W = blkdiag(W1, W2);                 % moment condition weights
     
     %% Run estimation routine
     % ------------------------------------------------------------------------
     tolerance = 1e-12;  % tolerance for inner loop, stricter than outer loop
-    estimator = @(s) gmmobj(s, prices, prods, Z, W, shares, nu, tolerance);
+    estimator = @(s) gmmobj(s, prices, prods, Z, shares, nu, tolerance);
     options = optimset('Display', 'iter', 'TolFun', 1e-10);
     if usegrad  % use the gradient info in optimization routine
         options = optimset(options, 'GradObj', 'on');
@@ -85,7 +89,7 @@ function [theta, gammas, vcov, fval] = blpdemand(prices, prods, shares, ...
     vcov = stderr(exp(s));
     
     % ------------------------------------------------------------------------
-    function [fval, grad] = gmmobj(sigma, prices, X, Z, W, shares, nu, innertol)
+    function [fval, grad] = gmmobj(sigma, prices, X, Z, shares, nu, innertol)
         % GMMOBJ Objective function for BLP random coefficients model
         % Input arguments:
         %   theta = model parameters [beta; alpha; sigma_alpha]
@@ -128,22 +132,24 @@ function [theta, gammas, vcov, fval] = blpdemand(prices, prods, shares, ...
 
         %% Estimate demand-side non-random coefficients and unobservables
         % --------------------------------------------------------------------
-        [betas, xi] = ivreg(deltas, [prices, X], [Z, X], W);
+        [betas, xi] = ivreg(deltas, [prices, X], [Z, X], W1);
         
         %% Calculate markups and supply-side parameters
         % --------------------------------------------------------------------
         marks = markup(sigma, nu, prices, deltas, shares, prodcount, mktcount);
-        [gammas, eta] = ivreg(marks, [cons, cost, zc], [cons, K]);
+        [gammas, eta] = ivreg(marks, [cons, cost, zc], [cons, K], W2);
     
         %% Compute value of the objective function
         % --------------------------------------------------------------------
-        % TODO: include supply-side moments
-        fval = xi' * [Z, X] * W * [Z, X]' * xi;
+        % Calculate demand and supply-side moments
+        dmom = [Z, X]' * xi;       % demand-side moment conditions
+        smom = [cons, K]' * eta;   % supply-side moment conditions
+        fval = [dmom; smom]' * W * [dmom; smom];  % stack 'em high
         
         if nargout > 1
             % find the jacobian, then calculate gradient of objective function
             jac = jacob(deltas, sigma, prices, nu, prodcount, mktcount);
-            grad = 2 * jac' * [Z, X] * W * [Z, X]' * xi;
+            grad = 2*jac' * [Z, X, cons, K] * W * [dmom; smom];
         end
     
         % save latest parameter values
@@ -154,18 +160,26 @@ function [theta, gammas, vcov, fval] = blpdemand(prices, prods, shares, ...
         % STDERR Calculate standard errors for BLP parameter estimates
         %   This code follows Nevo's example code.
 
-        % TODO: find standard errors for gamma
         % derivative of share delta function with respect to sigma
         D = jacob(deltas, sigma, prices, nu, prodcount, mktcount);
         % calculate first portion of matrix
-        IV = [Z, prods];  % full instrument matrix
-        Q = [prices, prods, D]' * IV;
-        % calculate inverse of gamma' * gamma, see page 858 of BLP (1995)
+        IVD = [Z, prods];  % full demand-side instrument matrix
+        IVS = [cons, K];   % full supply-side instrument matrix
+        QD = [prices, prods, D]' * IVD;
+        QS = [cons, cost, zc]' * IVS;
+        % calculate inverse of Gamma' * Gamma, see page 858 of BLP (1995)
+        Q = blkdiag(QD, QS);
         B = inv(Q * W * Q');
+        
+        % find residuals for final parameters
+        [~, xi] = ivreg(deltas, [prices, prods], [Z, prods], W1);
+        marks = markup(sigma, nu, prices, deltas, shares, prodcount, mktcount);
+        [~, eta] = ivreg(marks, [cons, cost, zc], [cons, K], W2);
+        
         % calculate interaction of instrument matrix and residuals
-        [~, xi] = ivreg(deltas, [prices, prods], [Z, prods], W);
-        S = IV .* (xi * ones(1, size(IV, 2)));
-        V1 = S' * S;  % V1 from page 858 of BLP (1995)
+        SD = IVD .* (xi * ones(1, size(IVD, 2)));
+        SS = IVS .* (eta * ones(1, size(IVS, 2)));
+        V1 = [SD, SS]' * [SD, SS];  % V1 from page 858 of BLP (1995)
         % covariance matrix using just V1
         vcov = B * Q * W * V1 * W * Q' * B;
     end
