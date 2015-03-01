@@ -136,10 +136,10 @@ function [theta, gammas, vcov, fval] = blpdemand(prices, prods, shares, ...
         % --------------------------------------------------------------------
         % there are 3 possible conduct models: perfect competition, oligopoly,
         % and perfect collusion (monopoly).
-        if conduct == 'monopoly'
+        if strcmp(conduct, 'monopoly')
             marks = collusion(sigma, nu, prices, deltas, shares, ...
                               prodcount, mktcount);
-        elseif conduct == 'perfect'
+        elseif strcmp(conduct, 'perfect')
             marks = log(prices); 
         else  % oligopoly is the default
             marks = markup(sigma, nu, prices, deltas, shares, ...

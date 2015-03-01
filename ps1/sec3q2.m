@@ -19,7 +19,6 @@ z(shares == 0) = 0;
 runs = 10;
 % run the procedure multiple times so that we get multiple starting values
 estimates = zeros(runs, 9);  % 9 columns: fval, 5 demand & 3 supply coefs
-% TODO: add variance-covariance matrix for gamma
 variances = zeros(runs, 64); % 64 columns to hold re-shaped 8x8 matrix
 for i=1:runs  % run multiple times
     fprintf('Run %1.0f of %1.0f', i, runs)
