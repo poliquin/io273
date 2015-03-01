@@ -200,7 +200,7 @@ function [theta, vcov, fval, etas] = blpdemand(prices, prods, shares, cost, ...
         sim_eta = sim_DS .* (prices ./ shares);
         
         % Compare
-        result = [true_eta; sim_eta];
+        result = [true_eta, sim_eta]';
     end
 end
     
