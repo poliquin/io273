@@ -10,7 +10,8 @@ Here is a description of the code for the first problem set:
 
     mktsim.m         Simulate j products in m markets
     create_data.m    Create and save datasets for 1.3
-    mkthist.m        Draw histograms for simulated data
+    sec2q1.m         Answer section 2, question 1
+    sec2q2.m         Run BLP algorithm for section 2, question 2
 
 The folder `ps1` should have the following sub-directories:
 

@@ -1,4 +1,4 @@
-function [deltas] = innerloop(start_deltas, shares, sharefunc, tolerance)
+function [deltas] = innerloop(start_deltas, shares, sharefunc, tolerance, prodcount)
     %INNERLOOP Contraction mapping to solve non-linear system for delta
     %   Solve equation 6.8 from BLP (1995) to make the observed market shares
     %   similar to the estimated shares.
@@ -10,23 +10,18 @@ function [deltas] = innerloop(start_deltas, shares, sharefunc, tolerance)
     % Output arguments:
     %   deltas = Values of delta found using the contraction map, with markets
     %            in rows and products in columns.
-    iters = 0;
+
     old_deltas = start_deltas;
     while 1
-        deltas = old_deltas + log(shares) - log(sharefunc(old_deltas));
+        old_shares = reshape(mean(sharefunc(old_deltas),2),prodcount,[]);
+        if (sum(old_shares == 0) > 0)
+            disp('Zero shares; wrong!')
+        end
+        deltas = old_deltas + log(shares) - log(old_shares);
         % check if we have converged on values for delta
         if (max(abs(deltas(:) - old_deltas(:))) < tolerance)
             break
         end
         old_deltas = deltas;
-        
-        % Terminate if we iterate more than 100,000 times
-        % This is for cases when we don't get convergence
-        iters = iters + 1;
-        if (iters > 1e5)
-            disp('Inner loop did not converge')
-            max(abs(deltas(:) - old_deltas(:)))
-            break
-        end
     end
 end
