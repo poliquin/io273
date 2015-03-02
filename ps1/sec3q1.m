@@ -1,5 +1,7 @@
 % BLP estimation using demand and cost moments
 
+runs = 1;  % number of times to run BLP algorithm
+
 %% Load the (3, 100) dataset
 % ----------------------------------------------------------------------------
 load('data/100_3.mat')
@@ -15,14 +17,13 @@ cost(shares == 0, :) = 0;
 
 %% Run the estimation procedure using cost and demand side moments
 % ----------------------------------------------------------------------------
-runs = 30;
 % run the procedure multiple times so that we get multiple starting values
 estimates = zeros(runs, 6);  % 6 columns: fval plus coefficients
 variances = zeros(runs, 25); % 25 columns to hold re-shaped 5x5 matrix
 for i=1:runs  % run six times
     fprintf('Run %1.0f of %1.0f', i, runs)
-    [theta, vcov, fval] = blpdemand(prices, prods, shares, cost, ...
-            prodcount, mktcount, true, true);
+    [theta, ~, vcov, fval] = blpdemand(prices, prods, shares, cost, z, ...
+            prodcount, mktcount, true, true, false, 'oligopoly');
     estimates(i, :) = [fval, theta'];
     variances(i, :) = reshape(vcov, 1, []);
     disp(' ')
@@ -65,14 +66,13 @@ prods(shares == 0, :) = 0;
 
 %% Run the estimation procedure using cost and demand side moments
 % ----------------------------------------------------------------------------
-runs = 30;
 % run the procedure multiple times so that we get multiple starting values
 estimates = zeros(runs, 6);  % 6 columns: fval plus coefficients
 variances = zeros(runs, 25); % 25 columns to hold re-shaped 5x5 matrix
 for i=1:runs  % run six times
     fprintf('Run %1.0f of %1.0f', i, runs)
-    [theta, vcov, fval] = blpdemand(prices, prods, shares, cost, ...
-            prodcount, mktcount, true, true);
+    [theta, ~, vcov, fval] = blpdemand(prices, prods, shares, cost, z, ...
+            prodcount, mktcount, true, true, false, 'oligopoly');
     estimates(i, :) = [fval, theta'];
     variances(i, :) = reshape(vcov, 1, []);
     disp(' ')

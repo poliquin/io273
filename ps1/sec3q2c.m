@@ -2,7 +2,7 @@ function [collusion, oligopoly, competition, ...
           collusion_mc, oligopoly_mc, competition_mc] = sec3q2c()
 % SEC3Q2C  Estimate demand/supply model under different conduct assumptions
 
-runs = 10;  % number of times to run each model
+runs = 1;  % number of times to run each model
 
 data = load('data/100_3.mat');
 cost = data.cost;
@@ -90,7 +90,7 @@ function [theta, gammas, se_theta, se_gamma, mc] = runblp(runs, conduct)
     for i=1:runs  % run multiple times
         fprintf('Run %1.0f of %1.0f', i, runs)
         [theta, gammas, vcov, fval] = blpdemand(prices, prods, shares, ...
-                cost, z, prodcount, mktcount, true, true, conduct);
+                cost, z, prodcount, mktcount, true, true, true, conduct);
         estimates(i, :) = [fval, theta', gammas'];
         variances(i, :) = reshape(vcov, 1, []);
         disp(' ')

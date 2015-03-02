@@ -1,5 +1,7 @@
 % BLP estimation of supply and demand side
 
+runs = 1;  % number of times to run BLP algorithm
+
 %% Load the (3, 100) dataset
 % ----------------------------------------------------------------------------
 load('data/100_3.mat')
@@ -16,14 +18,13 @@ z(shares == 0) = 0;
 
 %% Run the estimation procedure for demand and supply side
 % ----------------------------------------------------------------------------
-runs = 10;
 % run the procedure multiple times so that we get multiple starting values
 estimates = zeros(runs, 9);  % 9 columns: fval, 5 demand & 3 supply coefs
 variances = zeros(runs, 64); % 64 columns to hold re-shaped 8x8 matrix
 for i=1:runs  % run multiple times
     fprintf('Run %1.0f of %1.0f', i, runs)
     [theta, gammas, vcov, fval] = blpdemand(prices, prods, shares, ...
-            cost, z, prodcount, mktcount, true, true);
+            cost, z, prodcount, mktcount, true, true, true, 'oligopoly');
     estimates(i, :) = [fval, theta', gammas'];
     variances(i, :) = reshape(vcov, 1, []);
     disp(' ')
@@ -42,6 +43,9 @@ gammas = estimates(minidx, 7:9)';
 vcov = reshape(variances(minidx, :), 8, 8);
 vcov_theta = vcov(1:5, 1:5);
 vcov_gamma = vcov(6:8, 6:8);
+
+% save these estimates for use in sec3q2b, which calculates marginal cost
+save('data/supply_side_est.mat', 'fval', 'theta', 'gammas', 'vcov');
 
 % calculate bias of the estimates
 bias_theta = theta - [-1; 5; 1; 1; 1];
