@@ -1,5 +1,5 @@
-function [theta, vcov, fval, etas] = blpdemand(prices, prods, shares, cost, ...
-        prodcount, mktcount, usegrad)
+function [estimates, variances, fval, true_etas, siml_etas] = ...
+    blpdemand(prices, prods, shares, cost, prodcount, mktcount, usegrad, runs)
     % BLP Estimation of model from BLP (1995)
     % Input arguments:
     %   prices = mXj by 1 vector of prices for each product-market combination
@@ -57,34 +57,61 @@ function [theta, vcov, fval, etas] = blpdemand(prices, prods, shares, cost, ...
     
     %% Run estimation routine
     % ------------------------------------------------------------------------
-    inner_tol = 1e-14;  % tolerance for inner loop, stricter than outer loop
-    outer_tol= 1e-12;  % tolerance for outer loop
+    inner_tol = 1e-12;  % tolerance for inner loop, stricter than outer loop
+    outer_tol= 1e-10;  % tolerance for outer loop
+    
+    % Matrix to store different starting values
+    estimates = zeros(runs, 6);  % 6 columns: fval plus coefficients
+    variances = zeros(runs, 25); % 25 columns to hold re-shaped 5x5 matrix
+    true_etas = zeros(runs, prodcount * mktcount); % J * M columns to hold
+    siml_etas = zeros(runs, prodcount * mktcount); % vectors of elasticities
+    
+    % Objective function
     estimator = @(s) gmmobj(s, prices, prods, Z, W, shares, nu, inner_tol);
     options = optimset('Display', 'iter', 'TolFun', outer_tol);
+    
+    % Different starting values
+    seeds = unifrnd(-1,2,1,runs)
+    %[-0.727407016288269, 1.11048669048004,
+%     -0.578661179237975, 1.33397825171076,
+%      1.13629449778894,  0.312291685420777,
+%     -0.380534406326395, 1.54753823192585,
+%      0.820892687110788, 1.16828890358215]
+    
+    % Start at different initial values to verify convergence
+    for i=1:runs
+        fprintf('Run %1.0f of %1.0f', i, runs)
+        if usegrad  % use the gradient info in optimization routine
+            options = optimset(options, 'GradObj', 'on');
+            % uncomment below to check derivative against finite difference
+            %options = optimset(options, 'DerivativeCheck', 'on');
+            [s, fval, grad] = fminunc(estimator,  seeds(i), options);
 
-    if usegrad  % use the gradient info in optimization routine
-        options = optimset(options, 'GradObj', 'on');
-        % uncomment below to check derivative against finite difference
-        %options = optimset(options, 'DerivativeCheck', 'on');
-        [s, fval, grad] = fminunc(estimator,  unifrnd(-1, 2), options);
-        
-        % Optimal weight matrix
-        omega = deltas - [prices, prods] * theta(1:4);
-        W = ([Z, prods]' * diag(omega .^2) * [Z, prods]) \ eye(size([Z,prods],2));
-        
-        % Optimize again using the new weight matrix
-        estimator = @(s) gmmobj(s, prices, prods, Z, W, shares, nu, inner_tol);
-        options = optimset(options,'TolX',1e-20); % Probably unnecessary
-        [s, fval, grad] = fminunc(estimator,  unifrnd(-1, 2), options);
-    else
-        [s, fval] = fminunc(estimator, lognrnd(0,1), options);
+            % Optimal weight matrix
+            omega = deltas - [prices, prods] * theta(1:4);
+            W = ([Z, prods]' * diag(omega .^2) * [Z, prods]) \ eye(size([Z,prods],2));
+
+            % Optimize again using the new weight matrix
+            estimator = @(s) gmmobj(s, prices, prods, Z, W, shares, nu, inner_tol);
+            options = optimset(options,'TolX',1e-20); % Probably unnecessary
+            [s, fval, grad] = fminunc(estimator,  seeds(i), options);
+
+            % Calculate standard errors
+            vcov = stderr(exp(s));
+
+            % Calculate elasticities
+            etas = elast(theta, nu, prods, prices, shares);
+        else
+            [s, fval] = fminunc(estimator, lognrnd(0,1), options);
+        end
+        % Save to variables
+        estimates(i, :) = [fval, theta'];
+        variances(i, :) = reshape(vcov, 1, []);
+        true_etas(i, :) = etas(1,:);
+        siml_etas(i, :) = etas(2,:);
+        disp(' ')
     end
     
-    % Calculate standard errors
-    vcov = stderr(exp(s));
-    
-    % Calculate elasticities
-    etas = elast(theta, nu, prods, prices, shares);
     
     % ------------------------------------------------------------------------
     function [fval, grad] = gmmobj(sigma, prices, X, Z, W, shares, nu, innertol)

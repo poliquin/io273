@@ -17,8 +17,8 @@ function [shares] = deltashares(deltas, prutil, prodcount)
     % To obtain the shares for each market, you need to take the mean over 
     % simulated consumers following equation 6.10, which is the simple 
     % simulator proposed by BLP (1995).
-    tops = exp(repmat(deltas,1,N_customers) - prutil);
-    tops(tops==0) = 10e-5;
+    tops = exp(repmat(deltas, 1, N_customers) - prutil);
+    tops(tops==0) = 10e-20; % If deltas are zero, change it to small value
     bottom = 1 + sum(tops);
     shares = reshape(bsxfun(@rdivide, tops, bottom), prodcount ... 
         * J_markets, []);

@@ -2,6 +2,8 @@
 
 %% Load the (3, 100) dataset
 % ----------------------------------------------------------------------------
+rng(8675309);  % seed for reproducibility
+
 load('data/100_3.mat')
 prodcount = 3;
 mktcount = 100;
@@ -14,23 +16,11 @@ prods(shares == 0, :) = 0;
 
 %% Run the estimation procedure using demand side moments
 % ----------------------------------------------------------------------------
-runs = 1;
+runs = 10;
 % run the procedure multiple times so that we get multiple starting values
-estimates = zeros(runs, 6);  % 6 columns: fval plus coefficients
-variances = zeros(runs, 25); % 25 columns to hold re-shaped 5x5 matrix
-true_etas = zeros(runs, prodcount * mktcount); % J * M columns to hold
-siml_etas = zeros(runs, prodcount * mktcount); % vectors of elasticities
-for i=1:runs  % run six times
-    fprintf('Run %1.0f of %1.0f', i, runs)
-    [theta, vcov, fval, etas] = blpdemand(prices, prods, shares, cost, ...
-            prodcount, mktcount, true);
-    estimates(i, :) = [fval, theta'];
-    variances(i, :) = reshape(vcov, 1, []);
-    true_etas(i, :) = etas(1,:);
-    siml_etas(i, :) = etas(2,:);
-    disp(' ')
-end
-
+[estimates, variances, fval, true_etas, siml_etas] = blpdemand(prices, ...
+    prods, shares, cost, prodcount, mktcount, true, runs);
+        
 % show all of the estimates
 disp('Full results')
 disp(estimates)
@@ -86,7 +76,7 @@ estimates = zeros(runs, 6);  % 6 columns: fval plus coefficients
 variances = zeros(runs, 25); % 25 columns to hold re-shaped 5x5 matrix
 for i=1:runs  % run six times
     fprintf('Run %1.0f of %1.0f', i, runs)
-    [theta, vcov, fval, etas] = blpdemand(prices, prods, shares, cost, ...
+    [theta, vcov, fval, true_etas, siml_etas] = blpdemand(prices, prods, shares, cost, ...
             prodcount, mktcount, true);
     estimates(i, :) = [fval, theta'];
     variances(i, :) = reshape(vcov, 1, []);
