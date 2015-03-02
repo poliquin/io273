@@ -9,13 +9,13 @@ function foc = merger_foc(P,MC,X,BETA,ALPHA,XI,NU,SIGMA,merger)
     end
 end
 
-function [shares, sim_DS,sim_XDS]=merger_shr(P0,X,BETA,ALPHA,XI,NU,SIGMA)
-    deltas = X * BETA - ALPHA * P0+ XI;
-    price_utility = bsxfun(@times,P0,NU);
+function [shares, sim_DS,sim_XDS]=merger_shr(P,X,BETA,ALPHA,XI,NU,SIGMA)
+    deltas = X * BETA - ALPHA * P+ XI;
+    price_utility = bsxfun(@times,P,NU);
     f_sim = deltashares(deltas, price_utility, 3);
     shares = reshape(mean(f_sim,2),3,[]);
 
     % Compute cross prive derivatives, reshape
-    sim_DS = -mean(bsxfun(@times,f_sim .* (1-f_sim), NU * ALPHA),2);
-    sim_XDS = mean(bsxfun(@times,bsxfun(@rdivide,f_sim,sum(f_sim+1)),(ALPHA+NU*SIGMA)),2);
+    sim_DS = -mean(bsxfun(@times,f_sim .* (1-f_sim), ALPHA+NU * SIGMA),2);
+    sim_XDS = mean((ALPHA+SIGMA*NU).*(f_sim(1,:).*f_sim(2,:)),2);
 end

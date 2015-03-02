@@ -8,7 +8,7 @@ Z = normrnd(0, 1, 3, 1);
 SIGMA = 1.313;
 ALPHA = 0.693;
 BETA = [4.664; 1.268; 1.100];
-GAMMA = [1.602; 0.351; 0346];
+GAMMA = [1.602; 0.351; 0.346];
 
 %% Predict new set of prices using estimated parameters
 % Draw 500 consumers
@@ -24,12 +24,14 @@ MC = 0.2 * exp([ones(3,1), W, Z] * GAMMA);
 
 % Values for optimization
 P0 = [1;1;1];
-options = optimoptions('fsolve', 'Display', 'off','MaxIter', 800);
+options = optimoptions('fsolve', 'Display', 'off','MaxIter', 1e7,'MaxFunEvals',1e7);
 
 % Bootstrap process:
 %   1. sample 500 individuals with replacement
 %   2. with simulated sample, calculate prices
 %   3. store prices, repeat.
+temp = zeros(ns*100,1);
+temp_prices = zeros(3,500);
 for nsim = 1:ns
     % 1. Sample 500 individuals with replacement
     nu_btsp = datasample(nu,500,2);
@@ -44,7 +46,12 @@ for nsim = 1:ns
 
         % Merged firm's first order conditions
         firmobj = @(P) merger_foc(P,MC,X,BETA,ALPHA,XI,NU,SIGMA,true);
-        [P, fval] = fsolve(firmobj, P0, options);
+        [P, fval, exitflag] = fsolve(firmobj, P0, options);
+        temp(nsim*i) = exitflag;
+        while sum(P<0)>0
+            % When firm prices are negative, bad starting values
+            [P, fval, exitflag] = fsolve(firmobj, unifrnd(0,10,3,1), options);
+        end
         merger_prices(:,i) = P;
         
         % Unmerged firm's first order conditions
@@ -58,6 +65,8 @@ for nsim = 1:ns
     p_all_prices(:,:,nsim) = pre_prices;
     disp(nsim)
 end
+tabulate(temp)
+sum(sum(sum(all_prices<0)))
 
 % Calculate standard errors 
 avg_prices = mean(mean(all_prices,2),3);
