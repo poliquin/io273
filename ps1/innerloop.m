@@ -10,18 +10,21 @@ function [deltas] = innerloop(start_deltas, shares, sharefunc, tolerance, prodco
     % Output arguments:
     %   deltas = Values of delta found using the contraction map, with markets
     %            in rows and products in columns.
-
+    iters = 0;
     old_deltas = start_deltas;
     while 1
         old_shares = reshape(mean(sharefunc(old_deltas),2),prodcount,[]);
-        if (sum(old_shares == 0) > 0)
-            disp('Zero shares; wrong!')
-        end
+        
         deltas = old_deltas + log(shares) - log(old_shares);
         % check if we have converged on values for delta
         if (max(abs(deltas(:) - old_deltas(:))) < tolerance)
             break
         end
+        if (iters > 1e6)
+            max(abs(deltas(:) - old_deltas(:)))
+            deltas;
+        end
         old_deltas = deltas;
+        iters = iters + 1;
     end
 end

@@ -2,6 +2,8 @@
 
 %% Load the (3, 100) dataset
 % ----------------------------------------------------------------------------
+rng(8675309);  % seed for reproducibility
+
 load('data/100_3.mat')
 prodcount = 3;
 mktcount = 100;
@@ -14,23 +16,11 @@ prods(shares == 0, :) = 0;
 
 %% Run the estimation procedure using demand side moments
 % ----------------------------------------------------------------------------
-runs = 1;
+runs = 10;
 % run the procedure multiple times so that we get multiple starting values
-estimates = zeros(runs, 6);  % 6 columns: fval plus coefficients
-variances = zeros(runs, 25); % 25 columns to hold re-shaped 5x5 matrix
-true_etas = zeros(runs, prodcount * mktcount); % J * M columns to hold
-siml_etas = zeros(runs, prodcount * mktcount); % vectors of elasticities
-for i=1:runs  % run six times
-    fprintf('Run %1.0f of %1.0f', i, runs)
-    [theta, vcov, fval, etas] = blpdemand(prices, prods, shares, cost, ...
-            prodcount, mktcount, true);
-    estimates(i, :) = [fval, theta'];
-    variances(i, :) = reshape(vcov, 1, []);
-    true_etas(i, :) = etas(1,:);
-    siml_etas(i, :) = etas(2,:);
-    disp(' ')
-end
-
+[estimates, variances, fval, true_etas, siml_etas] = blpdemand(prices, ...
+    prods, shares, cost, prodcount, mktcount, true, false, runs);
+        
 % show all of the estimates
 disp('Full results')
 disp(estimates)
@@ -39,8 +29,6 @@ disp(estimates)
 [fval, minidx] = min(estimates(:, 1));
 theta = estimates(minidx, 2:end);
 vcov  = reshape(variances(minidx, :), 5, 5);
-true_eta = reshape(true_etas(minidx,:),prodcount,[]);
-siml_eta = reshape(siml_etas(minidx,:),prodcount,[]);
 
 % calculate bias of the estimates
 bias = theta' - [-1; 5; 1; 1; 1];
@@ -56,14 +44,36 @@ fprintf('Objective function: %i', fval)
 disp(' ')
 
 % print the (average) elasticities 
+true_eta = reshape(true_etas(minidx,:),prodcount,[]);
+siml_eta = reshape(siml_etas(minidx,:),prodcount,[]);
 final_true_eta = mean(true_eta,2);
 final_siml_eta = mean(siml_eta,2);
 disp(' ')
 disp('(3, 100) Own Price Elasticities')
-disp(table(num2str(final_true_eta, '%3.3f'), ...
-            num2str(final_siml_eta, '%3.3f'), ...
+disp(table(num2str(final_true_eta, '%3.3f & '), ...
+            num2str(final_siml_eta, '%3.3f \\\\'), ...
             'VariableNames',{'True', 'Simlulated'},...
-            'RowNames',{'X1 &','X2 &','X3 &'}))
+            'RowNames',{'Firm 1 &','Firm 2 &','Firm 3 &'}))
+
+% print elasticities across markets
+disp(table(num2str([true_eta;siml_eta], '%3.3f & '), ...
+            'RowNames',{'Firm 1 True &','Firm 2 True &','Firm 3 True &',...
+            'Firm 1 Siml &','Firm 2 Siml &','Firm 3 Siml &'}))
+        
+% Average profits
+true_pi = mean(-reshape(prices,3,[]).*reshape(shares,3,[])./true_eta*500,2);
+siml_pi = mean(-reshape(prices,3,[]).*reshape(shares,3,[])./siml_eta*500,2);
+
+% Average surplus
+true_cs = mean(reshape(([prices, prods,-prices*0.5] * [-1;5;1;1;1]).*shares,3,[]),2)
+siml_cs = mean(reshape(([prices, prods,prices*theta(1)*0.5] * theta').*shares,3,[]),2)
+
+disp(table(num2str(true_pi,'%4.3f &'),num2str(siml_pi,'%3.3f &'),...
+    num2str(true_cs,'%4.3f &'), num2str(siml_cs, '%3.3f \\\\ '),...
+    'VariableNames',{'True_profit','Siml_profit','True_CS','Siml_CS'},...
+    'RowNames',{'Firm 1 &','Firm 2 &','Firm 3 &'}))
+
+% 
 
 %% Load the (3, 10) dataset
 % ----------------------------------------------------------------------------
@@ -82,18 +92,12 @@ prods(shares == 0, :) = 0;
 % ----------------------------------------------------------------------------
 runs = 10;
 % run the procedure multiple times so that we get multiple starting values
-estimates = zeros(runs, 6);  % 6 columns: fval plus coefficients
-variances = zeros(runs, 25); % 25 columns to hold re-shaped 5x5 matrix
-for i=1:runs  % run six times
-    fprintf('Run %1.0f of %1.0f', i, runs)
-    [theta, vcov, fval, etas] = blpdemand(prices, prods, shares, cost, ...
-            prodcount, mktcount, true);
-    estimates(i, :) = [fval, theta'];
-    variances(i, :) = reshape(vcov, 1, []);
-    disp(' ')
-end
+[estimates, variances, fval, true_etas, siml_etas] = blpdemand(prices, prods, shares, cost, ...
+            prodcount, mktcount, true, false, runs);
+disp(' ')
 
-% show all of the estimates
+
+% show all of the estimx`ates
 disp('Full results')
 disp(estimates)
 
@@ -114,3 +118,33 @@ disp(table(num2str(theta', '%3.3f &'), num2str(sqrt(diag(vcov)), '(%3.3f) &'), .
             'RowNames', {'Price  &', 'X1  &', 'X2  &', 'X3  &', 'Sigma  &'}))
 fprintf('Objective function: %i', fval)
 disp(' ')
+
+% print the (average) elasticities 
+true_eta = reshape(true_etas(minidx,:),prodcount,[]);
+siml_eta = reshape(siml_etas(minidx,:),prodcount,[]);
+final_true_eta = mean(true_eta,2);
+final_siml_eta = mean(siml_eta,2);
+disp(' ')
+disp('(3, 100) Own Price Elasticities')
+disp(table(num2str(final_true_eta, '%3.3f & '), ...
+            num2str(final_siml_eta, '%3.3f \\\\'), ...
+            'VariableNames',{'True', 'Simlulated'},...
+            'RowNames',{'Firm 1 &','Firm 2 &','Firm 3 &'}))
+
+% print elasticities across markets
+disp(table(num2str([true_eta;siml_eta], '%3.3f & '), ...
+            'RowNames',{'Firm 1 True &','Firm 2 True &','Firm 3 True &',...
+            'Firm 1 Siml &','Firm 2 Siml &','Firm 3 Siml &'}))
+        
+% Average profits
+true_pi = mean(-reshape(prices,3,[]).*reshape(shares,3,[])./true_eta*500,2);
+siml_pi = mean(-reshape(prices,3,[]).*reshape(shares,3,[])./siml_eta*500,2);
+
+% Average surplus
+true_cs = mean(reshape(([prices, prods,-prices*0.5] * [-1;5;1;1;1]).*shares,3,[]),2)
+siml_cs = mean(reshape(([prices, prods,prices*theta(1)*0.5] * theta').*shares,3,[]),2)
+
+disp(table(num2str(true_pi,'%4.3f &'),num2str(siml_pi,'%3.3f &'),...
+    num2str(true_cs,'%4.3f &'), num2str(siml_cs, '%3.3f \\\\ '),...
+    'VariableNames',{'True_profit','Siml_profit','True_CS','Siml_CS'},...
+    'RowNames',{'Firm 1 &','Firm 2 &','Firm 3 &'}))
