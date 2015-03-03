@@ -1,5 +1,4 @@
-function [collusion, oligopoly, competition, ...
-          collusion_mc, oligopoly_mc, competition_mc] = sec3q2c()
+function [] = sec3q2c()
 % SEC3Q2C  Estimate demand/supply model under different conduct assumptions
 
 runs = 1;  % number of times to run each model
@@ -89,7 +88,7 @@ function [theta, gammas, se_theta, se_gamma, mc] = runblp(runs, conduct)
     variances = zeros(runs, 64); % 64 columns to hold re-shaped 8x8 matrix
     for i=1:runs  % run multiple times
         fprintf('Run %1.0f of %1.0f', i, runs)
-        [theta, gammas, vcov, fval] = blpdemand(prices, prods, shares, ...
+        [theta, gammas, vcov, ~, ~, fval] = blpdemand(prices, prods, shares, ...
                 cost, z, prodcount, mktcount, true, true, true, conduct);
         estimates(i, :) = [fval, theta', gammas'];
         variances(i, :) = reshape(vcov, 1, []);
@@ -97,7 +96,7 @@ function [theta, gammas, se_theta, se_gamma, mc] = runblp(runs, conduct)
     end
     
     % find best set of coefficients and standard errors (smallest fval)
-    [fval, minidx] = min(estimates(:, 1));
+    [~, minidx] = min(estimates(:, 1));
     theta  = estimates(minidx, 2:6)';
     gammas = estimates(minidx, 7:9)';
     vcov = reshape(variances(minidx, :), 8, 8);

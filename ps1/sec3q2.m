@@ -23,7 +23,7 @@ estimates = zeros(runs, 9);  % 9 columns: fval, 5 demand & 3 supply coefs
 variances = zeros(runs, 64); % 64 columns to hold re-shaped 8x8 matrix
 for i=1:runs  % run multiple times
     fprintf('Run %1.0f of %1.0f', i, runs)
-    [theta, gammas, vcov, fval] = blpdemand(prices, prods, shares, ...
+    [theta, gammas, vcov, ~, ~, fval] = blpdemand(prices, prods, shares, ...
             cost, z, prodcount, mktcount, true, true, true, 'oligopoly');
     estimates(i, :) = [fval, theta', gammas'];
     variances(i, :) = reshape(vcov, 1, []);
