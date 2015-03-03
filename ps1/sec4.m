@@ -1,7 +1,7 @@
 % Merger analysis
 rng(8675309);  % seed for reproducibility
 load('data/100_3.mat')
-W = normrnd(0, 1, 3, 1); % Need to change simulated data to include W & Z
+W = normrnd(0,1,3,1); % Need to change simulated data to include W & Z
 Z = normrnd(0, 1, 3, 1);
 
 % Pick parameters that we liked (Got them from our Latex file)
@@ -24,7 +24,7 @@ MC = 0.2 * exp([ones(3,1), W, Z] * GAMMA);
 
 % Values for optimization
 P0 = [1;1;1];
-options = optimoptions('fsolve', 'Display', 'off','MaxIter', 1e7,'MaxFunEvals',1e7);
+options = optimoptions('fsolve', 'Display', 'off','MaxIter', 1e3, 'MaxFunEvals',1e3);
 
 % Bootstrap process:
 %   1. sample 500 individuals with replacement
@@ -46,17 +46,27 @@ for nsim = 1:ns
 
         % Merged firm's first order conditions
         firmobj = @(P) merger_foc(P,MC,X,BETA,ALPHA,XI,NU,SIGMA,true);
-        [P, ~, exitflag] = fsolve(firmobj, P0, options);
+        [P, fval, exitflag] = fsolve(firmobj, P0, options);
         temp(nsim*i) = exitflag;
-        while sum(P<0)>0
+        iters = 0;
+        while sum(P<0)>0 && iters < 1e3
+            iters = iters + 1;
             % When firm prices are negative, bad starting values
-            [P, ~, exitflag] = fsolve(firmobj, unifrnd(0,10,3,1), options);
+            [P, fval, exitflag] = fsolve(firmobj, unifrnd(0,10,3,1), options);
+        end
+        if iters >= 1e3
+            disp([nsim, i, P']);
         end
         merger_prices(:,i) = P;
         
         % Unmerged firm's first order conditions
         firmobj = @(P) merger_foc(P,MC,X,BETA,ALPHA,XI,NU,SIGMA,false);
         [P, fval] = fsolve(firmobj, P0, options);
+        while sum(P<0)>0 && iters < 1e3
+            iters = iters + 1;
+            % When firm prices are negative, bad starting values
+            [P, fval, exitflag] = fsolve(firmobj, unifrnd(0,10,3,1), options);
+        end
         pre_prices(:,i) = P;
     end
     
@@ -79,3 +89,36 @@ table(num2str(p_avg_prices,'%3.4f &'),num2str(p_std_err,'%3.4f &'),...
     num2str(avg_prices,'%3.4f &'),num2str(std_err,'%3.4f \\\\'),...
     'RowNames',{'P1 &','P2 &','P3 &'}, ...
     'VariableNames',{'PreMean','PreSE','Mean','SE'})
+
+% Calculate markups
+post_mkup = (avg_prices-MC)./avg_prices;
+pre_mkup = (p_avg_prices-MC)./p_avg_prices;
+increase = (post_mkup./pre_mkup)-1;
+
+% Display results
+table(num2str(pre_mkup,'%3.4f &'),num2str(post_mkup,'%3.4f &'),...
+    num2str(increase,'%3.4f \\\\'),...
+    'RowNames',{'Firm 1 &','Firm 2 &','Firm 3 &'}, ...
+    'VariableNames',{'Before','After','Increase'})
+
+% Changes in profits
+post_profits = (avg_prices-MC) .* mean(reshape(shares,3,[]),2) * 500;
+pre_profits = (p_avg_prices-MC) .* mean(reshape(shares,3,[]),2) * 500;
+increase_pi = (post_profits./pre_profits)-1;
+
+% Display results
+table(num2str(pre_profits,'%3.4f &'),num2str(post_profits,'%3.4f &'),...
+    num2str(increase_pi,'%3.4f \\\\'),...
+    'RowNames',{'Firm 1 &','Firm 2 &','Firm 3 &'}, ...
+    'VariableNames',{'Before','After','Increase'})
+
+% Consumer surplus for the average consumer
+pre_cs = X*BETA - (ALPHA + SIGMA*0.5)*p_avg_prices;
+post_cs = X*BETA - (ALPHA + SIGMA*0.5)*avg_prices;
+increase_cs = (post_cs./pre_cs)-1;
+
+% Display results
+table(num2str(pre_cs,'%3.4f &'),num2str(post_cs,'%3.4f &'),...
+    num2str(increase_cs,'%3.4f \\\\'),...
+    'RowNames',{'Firm 1 &','Firm 2 &','Firm 3 &'}, ...
+    'VariableNames',{'Before','After','Increase'})
