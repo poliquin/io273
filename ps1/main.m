@@ -15,6 +15,10 @@ run('sec2q1.m')  % Question 1
 disp('Section 2, Question 2')
 run('sec2q2.m')  % Question 2
 
+% Question 3 is in the sec2q3 folder and separated from the primary code
+% because it incorrectly assumes price is exogenous. It can be run by
+% running the sec2q3.m file.
+
 %% Section 3, Adding supply-side moments
 % ----------------------------------------------------------------------------
 clear all
