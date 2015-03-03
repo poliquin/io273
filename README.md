@@ -6,12 +6,11 @@ Each problem set should have its own directory.
 Problem Set 1
 -------------
 
-Here is a description of the code for the first problem set:
-
-    mktsim.m         Simulate j products in m markets
-    create_data.m    Create and save datasets for 1.3
-    sec2q1.m         Answer section 2, question 1
-    sec2q2.m         Run BLP algorithm for section 2, question 2
+Code for the first problem set is run using the `main.m` file, which
+runs all code, except code for section 2, question 3.  Section 2,
+question 3 is separated in its own branch, called `sec2q3` because the
+code incorrectly assumes exogenous prices. Keeping this code in a
+separate branch ensures it doesn't accidently affect our main results.
 
 The folder `ps1` should have the following sub-directories:
 
