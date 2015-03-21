@@ -41,3 +41,15 @@ options = optimset('Display', 'iter', 'TolFun', 10e-10);
 [x, fval] = fminsearch(@(x) -1 * like(x), unifrnd(-1, 4, 2, 1), options);
 
 sprintf('mu = %f\nsigma = %f', x(1), exp(x(2)))
+
+%% 2.3 Estimate mean costs of entry using moment inequality estimator
+NumSims = 100;
+theta = [1, 1, 1,1];  % true, known alpha, beta, delta, sigma
+% draw u
+for i=1:NumSims
+    u(:,:,i) = normrnd(0, theta(4), size(mrkts, 1), size(mrkts,2)-2);
+end
+% Find muhat
+options = optimset('Display', 'iter', 'TolFun', 10e-10);
+[muhat] = fminsearch(@(mu) moment_inequalities(theta, mu, mrkts, firms, u), 0, options);
+
