@@ -6,8 +6,8 @@
 rng(8675309);
 
 %% Generate and save data for the entry game
-[markets, costs, firms] = sim(3, 100);
-save('data/entry.mat', 'markets', 'costs', 'firms');
+[mrkts, costs, firms, entry] = sim(3, 100);
+save('data/entry.mat', 'mrkts', 'costs', 'firms', 'entry');
 % create a histogram of simulation values
 f = figure('PaperPosition', [.1, .2, 6.2, 3.5], 'PaperSize', [6.4, 4]);
 subplot(1,3,1)

@@ -1,4 +1,4 @@
-function [mrkts, costs, firms] = sim(F, M)
+function [mrkts, costs, firms, entry] = sim(F, M)
     % SIM - Simulate market equilibrium of entry model.
     %   Simulate an entry game in M markets with F potential entrants in which
     %   firms make entry decisions sequentially, ordered by fixed costs.
@@ -10,6 +10,7 @@ function [mrkts, costs, firms] = sim(F, M)
     %           number of entrants, and profits of each firm
     %   costs = M by F matrix with fixed cost of each firm in columns
     %   firms = M by F matrix with firm-market characteristics in columns
+    %   entry = M by F matrix with dummies for entry decisions
     
     % model parameters
     MU = 2; SIGMA = 1;
@@ -19,6 +20,7 @@ function [mrkts, costs, firms] = sim(F, M)
     mrkts = zeros(M, F + 2);  % market characteristic, #entrants, and profits
     costs = zeros(M, F);      % fixed costs
     firms = zeros(M, F);      % firm-market characteristics
+    entry = zeros(M, F);      % dummies for entry decisions
 
     for m = 1:M  % simulate each market individually
         
@@ -47,5 +49,6 @@ function [mrkts, costs, firms] = sim(F, M)
         mrkts(m,:) = [Xm, entrants, realized_profits'];
         costs(m,:) = phi';
         firms(m,:) = Zf';
+        entry(m,:) = [ones(1, entrants), zeros(1, F - entrants)];
     end
 end
