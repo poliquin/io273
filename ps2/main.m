@@ -43,7 +43,7 @@ options = optimset('Display', 'iter', 'TolFun', 10e-10);
 sprintf('mu = %f\nsigma = %f', x(1), exp(x(2)))
 
 %% 2.3 Estimate mean costs of entry using moment inequality estimator
-NumSims = 100;
+NumSims = 100; % Number of simulations
 theta = [1, 1, 1,1];  % true, known alpha, beta, delta, sigma
 % draw u
 for i=1:NumSims

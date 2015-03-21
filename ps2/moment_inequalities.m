@@ -3,7 +3,7 @@
 % (2009).
     
 function obj = moment_inequalities(theta, mu, markets,firms, u)    
-% model parameters (to be converted into function form)
+% model parameters 
 MU = mu; 
 ALPHA = theta(1); BETA = theta(2); DELTA = theta(3); SIGMA = theta(4);
 
@@ -78,7 +78,7 @@ H1hat = [H1hat, H1hati];
 H2hat = [H2hat, H2hati];
 end
 
-% Determine entry possibilities
+% Determine actual entry
 actual_entry = zeros(NumConfigs,NumMarkets);
 for mkt = 1:NumMarkets
     entry_temp = markets(mkt, 3:NumFirms+2);
