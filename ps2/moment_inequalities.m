@@ -1,48 +1,83 @@
-function [Phat] = berry(mrkts, firms, mu, sigma, T, theta)
-    % BERRY - Simulation estimator for sequential entry model
-    %   Produce estimate in equation (A.2) using equations (12) and (A.1) plus
-    %   the assumption that firms enter in order of profitability.
-    % Input arguments:
-    %   mrkts = M by . matrix with market characteristic in first column
-    %   firms = M by F matrix with firm-market characteristics in columns
-    %   mu = mean of distribution for the error term, u_fm
-    %   sigma = standard deviation of distribution for the error term, u_fm
-    %   T = number of simulation draws
-    %   theta = values for ALPHA, BETA, and DELTA
-    % Outputs:
-    %   Phat = simulated probability of entry for each firm
+% moment_inequalities - Simulation estimator for entry without
+% assumptions on order of entry. Procedure based on Ciliberto and Tamer
+% (2009).
+    
+load data/entry.mat
+    
+% model parameters (to be converted into function form)
+MU = 2; SIGMA = 1;
+ALPHA = 1; BETA = 1; DELTA = 1;
+NumSims = 100;
 
-    ALPHA = theta(1); BETA = theta(2); DELTA = theta(3);
-    [M, F] = size(firms);  % number of markets and potential entrants
-    Phat = zeros(M, F);    % hold simulated probabilities of entry
+% calculate how many firms and markets there are based on inputs
+NumMarkets = size(firms, 1);
+NumFirms = size(firms,2);
+NumConfigs = 2^NumFirms;
 
-    for m = 1:M  % simulate each market individually
-
-        Xm = mrkts(m, 1);           % market characteristic
-        Zf = firms(m, :)';          % firm-market characteristics
-        predictions = zeros(F, 1);  % probability of entry for each firm in m
-
-        for t = 1:T  % loop over T draws of simulation estimator
-
-            % simulated fixed costs for each firm, with u = mu + sigma * v
-            simphi = ALPHA * Zf + mu + sigma * normrnd(0, 1, F, 1);
-            
-            % order firms by simulated fixed costs
-            [~, idx] = sortrows(simphi);
-            
-            % estimated profits that result from entry by n firms
-            phat = @(n) BETA * Xm - DELTA * log(n) - simphi;
-            % expected number of entrants when there are K possible entrants
-            nhat = @(K) sum(arrayfun(@(n) sum(phat(n) >= 0) >= n, 1:K));
-
-            % when firms are ordered by profits, predicted entry equals 1 for
-            % firms with rank less than or equal to the expected # of entrants
-            predictions = predictions + (1/T) * (idx <= nhat(F));
-
-        end  % end simulation loop
-
-        % estimated probability of entry for each firm in market m
-        Phat(m, :) = predictions';
-    end  % end market loop
-
+% draw u
+for i=1:NumSims
+    u(:,:,i) = normrnd(MU, SIGMA, NumMarkets, NumFirms);
 end
+
+% Get the 2^NumFirms possible market configurations for each market
+config = [];
+for i = 0:NumFirms
+    config = [config; perms([ones(1,i) zeros(1,NumFirms-i)])];
+end
+config = unique(config, 'rows');
+
+% Loop over all markets and compute profits, entry, and H1 H2
+H1hat = [];
+H2hat = [];
+for m = 1:NumMarkets
+% Loop over each simulation and compute profits, entry, and H1 H2
+H1hati = [];
+H2hati = [];
+for i = 1:NumSims
+    % Compute profits
+    phi = ALPHA*firms(m,:) + u(m,:,i);
+    profits_config = repmat(markets(m,1)*BETA - DELTA*log(sum(config,2)),1,NumFirms)- repmat(phi,NumConfigs,1);
+    profits_config_plus1 = repmat(markets(m,1)*BETA - DELTA*log(sum(config,2)+1),1,NumFirms)- repmat(phi,NumConfigs,1);
+
+    % Compute entry under each configuration
+    entry_config = zeros(NumConfigs, NumFirms);
+    for j = 1:NumFirms
+        for k = 1:NumConfigs
+            if (profits_config(k,j)>=0 & config(k,j)==1) | (profits_config_plus1(k,j)>=0 & config(k,j)==0)
+                entry_config(k,j) = 1;
+            end
+        end
+    end
+    
+    % Check if that entry configuration is an equilibrium
+    equi_config = zeros(NumConfigs,1);
+    for k = 1:NumConfigs
+        if entry_config(k,:)==config(k,:)
+            equi_config(k) = 1;
+        end
+    end
+    
+    % Compute H1 and H2
+    sum_equi_config = sum(equi_config);
+    H1 = zeros(NumConfigs,1);
+    H2 = zeros(NumConfigs, 1);
+    for j = 1:NumConfigs
+        if sum_equi_config==1
+            H1=equi_config;
+            H2=equi_config;
+        end
+        if sum_equi_config>1
+            H2=equi_config;
+        end
+    end
+    H1hati = [H1hati, H1];     
+    H2hati = [H2hati, H2];
+end
+H1hati = mean(H1hati,2);
+H2hati = mean(H2hati,2);
+H1hat = [H1hat, H1hati];
+H2hat = [H2hat, H2hati];
+end
+
+H1hat
+H2hat
