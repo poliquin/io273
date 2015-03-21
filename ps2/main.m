@@ -37,7 +37,3 @@ options = optimset('Display', 'iter', 'TolFun', 1e-10);
 [x, fval] = fminunc(like, unifrnd(-1, 2, 2, 1), options);
 
 
-%% 2.3 Estimate the mean costs of entry using a moment inequality estimator
-theta = [1, 1, 1, 1];  % true, known alpha, beta, delta, sigma
-options = optimset('Display', 'iter', 'TolFun', 1e-10);
-[muhat] = fminunc(@(mu) moment_inequalities(theta, mu, mrkts, firms, 100), 1, options);

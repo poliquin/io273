@@ -2,14 +2,16 @@
 % assumptions on order of entry. Procedure based on Ciliberto and Tamer
 % (2009).
     
-function obj = moment_inequalities(theta, mu, markets,firms, NumSims)    
+load data/entry.mat
+    
 % model parameters (to be converted into function form)
-MU = mu; 
-ALPHA = theta(1); BETA = theta(2); DELTA = theta(3); SIGMA = theta(4);
+MU = 2; SIGMA = 1;
+ALPHA = 1; BETA = 1; DELTA = 1;
+NumSims = 100;
 
 % calculate how many firms and markets there are based on inputs
-NumMarkets = size(markets, 1);
-NumFirms = size(markets,2)-2;
+NumMarkets = size(firms, 1);
+NumFirms = size(firms,2);
 NumConfigs = 2^NumFirms;
 
 % draw u
@@ -24,7 +26,7 @@ for i = 0:NumFirms
 end
 config = unique(config, 'rows');
 
-% Loop over each market and compute profits, entry, and H1 H2
+% Loop over all markets and compute profits, entry, and H1 H2
 H1hat = [];
 H2hat = [];
 for m = 1:NumMarkets
@@ -37,12 +39,7 @@ for i = 1:NumSims
     profits_config = repmat(markets(m,1)*BETA - DELTA*log(sum(config,2)),1,NumFirms)- repmat(phi,NumConfigs,1);
     profits_config_plus1 = repmat(markets(m,1)*BETA - DELTA*log(sum(config,2)+1),1,NumFirms)- repmat(phi,NumConfigs,1);
 
-    % Compute entry under each configuration. Entry occurs if the config
-    % calls for the firm to enter and the firm earns positive profits when
-    % doing so. It also occurs if the config does not call for the firm to
-    % enter but the firm can still earn positive profits by entering after
-    % all the firms in the config already entered. If that happens, the
-    % config is not a market equilibrium.
+    % Compute entry under each configuration
     entry_config = zeros(NumConfigs, NumFirms);
     for j = 1:NumFirms
         for k = 1:NumConfigs
@@ -82,30 +79,5 @@ H1hat = [H1hat, H1hati];
 H2hat = [H2hat, H2hati];
 end
 
-% Determine entry possibilities
-actual_entry = zeros(NumConfigs,NumMarkets);
-for mkt = 1:NumMarkets
-    entry_temp = markets(mkt, 3:NumFirms+2);
-    for firm = 1:NumFirms
-        if entry_temp(1,firm)>0
-            entry_temp(1,firm) = 1;
-        end
-    end
-    for j = 1:NumConfigs
-        if entry_temp == config(j,:)
-            actual_entry(j, mkt) = 1;
-        end
-    end
-end
-
-% Calculate objective function
-obj_h1 = actual_entry - H1hat;
-obj_h1(obj_h1>0)=0; 
-obj_h2 = actual_entry - H2hat;
-obj_h2(obj_h2<0)=0; 
-obj=[];
-for mkt = 1:NumMarkets
-    obj = [obj, norm(obj_h1(:,mkt)) + norm(obj_h2(:,mkt))];
-end
-obj = mean(obj);
-
+H1hat
+H2hat
