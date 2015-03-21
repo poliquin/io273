@@ -1,7 +1,7 @@
 % Problem Set 2
 % =============
 % Do Yoon Kim, Chris Poliquin, David Zhang
-% March 2015
+% March 30, 2015
 
 rng(8675309);
 
