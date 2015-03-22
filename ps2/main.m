@@ -7,7 +7,7 @@ rng(8675309);
 
 %% 2.2(1) Generate and save data for the entry game
 
-[mrkts, costs, firms, entry] = sim(3, 100);
+[mrkts, costs, firms, entry] = sim_markets(3, 100);
 save('data/entry.mat', 'mrkts', 'costs', 'firms', 'entry');
 % create a histogram of simulation values
 f = figure('PaperPosition', [.1, .2, 6.2, 3.5], 'PaperSize', [6.4, 4]);
@@ -36,11 +36,13 @@ draw = normrnd(0, 1, 100, M*F);
 % likelihood function with mu = x(1) and sigma = exp(x(2))
 theta = [1, 1, 1];  % true, known alpha, beta, delta
 like = @(x) berry(mrkts, firms, entry, x(1), exp(x(2)), theta, draw);
-
 options = optimset('Display', 'iter', 'TolFun', 10e-10);
 [x, fval] = fminsearch(@(x) -1 * like(x), unifrnd(-1, 4, 2, 1), options);
 
 sprintf('mu = %f\nsigma = %f', x(1), exp(x(2)))
+
+[hess,~] = hessian(@(x) berry(mrkts, firms, entry, x(1), exp(x(2)), theta, draw),x);
+
 
 %% 2.3 Estimate mean costs of entry using moment inequality estimator
 NumSims = 100; % Number of simulations

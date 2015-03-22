@@ -1,4 +1,4 @@
-function [mrkts, costs, firms, entry] = sim(F, M)
+function [mrkts, costs, firms, entry] = sim_markets(F, M)
     % SIM - Simulate market equilibrium of entry model.
     %   Simulate an entry game in M markets with F potential entrants in which
     %   firms make entry decisions sequentially, ordered by fixed costs.
