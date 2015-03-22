@@ -30,8 +30,11 @@ H2hati = [];
 for i = 1:NumSims
     % Compute profits
     phi = ALPHA*firms(m,:) + mu + u(m,:,i);
-    profits_config = repmat(markets(m,1)*BETA - DELTA*log(sum(config,2)),1,NumFirms)- repmat(phi,NumConfigs,1);
-    profits_config_plus1 = repmat(markets(m,1)*BETA - DELTA*log(sum(config,2)+1),1,NumFirms)- repmat(phi,NumConfigs,1);
+    profits = @(n) repmat(markets(m, 1)*BETA - DELTA*log(n), 1, NumFirms) ...
+                   - repmat(phi, NumConfigs, 1);
+
+    profits_config = profits(sum(config, 2));
+    profits_config_plus1 = profits(sum(config, 2) + 1);
 
     % Compute entry under each configuration. Entry occurs if the config
     % calls for the firm to enter and the firm earns positive profits when
@@ -42,8 +45,9 @@ for i = 1:NumSims
     entry_config = zeros(NumConfigs, NumFirms);
     for j = 1:NumFirms
         for k = 1:NumConfigs
-            if (profits_config(k,j)>=0 & config(k,j)==1) | (profits_config_plus1(k,j)>=0 & config(k,j)==0)
-                entry_config(k,j) = 1;
+            if (profits_config(k, j) >= 0 & config(k, j) == 1) ...
+                    | (profits_config_plus1(k, j) >= 0 & config(k, j) == 0)
+                entry_config(k, j) = 1;
             end
         end
     end
@@ -51,39 +55,39 @@ for i = 1:NumSims
     % Check if that entry configuration is an equilibrium
     equi_config = zeros(NumConfigs,1);
     for k = 1:NumConfigs
-        if entry_config(k,:)==config(k,:)
+        if entry_config(k,:) == config(k,:)
             equi_config(k) = 1;
         end
     end
     
     % Compute H1 and H2
     sum_equi_config = sum(equi_config);
-    H1 = zeros(NumConfigs,1);
+    H1 = zeros(NumConfigs, 1);
     H2 = zeros(NumConfigs, 1);
     for j = 1:NumConfigs
-        if sum_equi_config==1
-            H1=equi_config;
-            H2=equi_config;
+        if sum_equi_config == 1
+            H1 = equi_config;
+            H2 = equi_config;
         end
-        if sum_equi_config>1
-            H2=equi_config;
+        if sum_equi_config > 1
+            H2 = equi_config;
         end
     end
     H1hati = [H1hati, H1];     
     H2hati = [H2hati, H2];
-end
-H1hati = mean(H1hati,2);
-H2hati = mean(H2hati,2);
+end  % end loop over NumSims
+H1hati = mean(H1hati, 2);
+H2hati = mean(H2hati, 2);
 H1hat = [H1hat, H1hati];
 H2hat = [H2hat, H2hati];
-end
+end  % end loop over NumMarkets
 
 % Determine actual entry
-actual_entry = zeros(NumConfigs,NumMarkets);
+actual_entry = zeros(NumConfigs, NumMarkets);
 for mkt = 1:NumMarkets
     entry_temp = markets(mkt, 3:NumFirms+2);
     for firm = 1:NumFirms
-        if entry_temp(1,firm)>0
+        if entry_temp(1,firm) > 0 
             entry_temp(1,firm) = 1;
         end
     end
