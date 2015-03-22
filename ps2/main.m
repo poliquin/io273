@@ -53,5 +53,5 @@ for i=1:NumSims
 end
 % Find muhat
 options = optimset('Display', 'iter', 'TolFun', 10e-10);
-[muhat] = fminsearch(@(mu) moment_inequalities(theta, mu, mrkts, firms, u),unifrnd(-1,4), options);
+[muhat] = fminsearch(@(mu) moment_inequalities(theta, mu, mrkts, firms, entry, u),unifrnd(-1,4), options);
 
