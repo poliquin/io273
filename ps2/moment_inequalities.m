@@ -2,7 +2,7 @@
 % assumptions on order of entry. Procedure based on Ciliberto and Tamer
 % (2009).
     
-function obj = moment_inequalities(theta, mu, markets,firms, u)    
+function obj = moment_inequalities(theta, mu, markets,firms, actualentry, u)    
 % model parameters 
 MU = mu; 
 ALPHA = theta(1); BETA = theta(2); DELTA = theta(3); SIGMA = theta(4);
@@ -82,21 +82,6 @@ H1hat = [H1hat, H1hati];
 H2hat = [H2hat, H2hati];
 end  % end loop over NumMarkets
 
-% Determine actual entry
-actual_entry = zeros(NumConfigs, NumMarkets);
-for mkt = 1:NumMarkets
-    entry_temp = markets(mkt, 3:NumFirms+2);
-    for firm = 1:NumFirms
-        if entry_temp(1,firm) > 0 
-            entry_temp(1,firm) = 1;
-        end
-    end
-    for j = 1:NumConfigs
-        if entry_temp == config(j,:)
-            actual_entry(j, mkt) = 1;
-        end
-    end
-end
 
 % Calculate objective function
 % THIS OBJECTIVE FUNCTION IS NOT YET CORRECT - NEED TO REPLACE ACTUAL ENTRY

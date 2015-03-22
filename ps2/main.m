@@ -52,6 +52,6 @@ for i=1:NumSims
     u(:,:,i) = normrnd(0, theta(4), size(mrkts, 1), size(mrkts, 2) - 2);
 end
 % Find muhat
-[muhat] = fminsearch(@(mu) moment_inequalities(theta, mu, mrkts, firms, u), ...
+[muhat] = fminsearch(@(mu) moment_inequalities(theta, mu, mrkts, firms, entry, u), ...
                      unifrnd(-1, 4), options);
 
