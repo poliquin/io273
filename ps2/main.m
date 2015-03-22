@@ -41,17 +41,17 @@ options = optimset('Display', 'iter', 'TolFun', 10e-10);
 
 sprintf('mu = %f\nsigma = %f', x(1), exp(x(2)))
 
-[hess,~] = hessian(@(x) berry(mrkts, firms, entry, x(1), exp(x(2)), theta, draw),x);
+[hess, ~] = hessian(like, x);
 
 
 %% 2.3 Estimate mean costs of entry using moment inequality estimator
 NumSims = 100; % Number of simulations
-theta = [1, 1, 1,1];  % true, known alpha, beta, delta, sigma
+theta = [1, 1, 1, 1];  % true, known alpha, beta, delta, sigma
 % draw u
 for i=1:NumSims
-    u(:,:,i) = normrnd(0, theta(4), size(mrkts, 1), size(mrkts,2)-2);
+    u(:,:,i) = normrnd(0, theta(4), size(mrkts, 1), size(mrkts, 2) - 2);
 end
 % Find muhat
-options = optimset('Display', 'iter', 'TolFun', 10e-10);
-[muhat] = fminsearch(@(mu) moment_inequalities(theta, mu, mrkts, firms, entry, u),unifrnd(-1,4), options);
+[muhat] = fminsearch(@(mu) moment_inequalities(theta, mu, mrkts, firms, u), ...
+                     unifrnd(-1, 4), options);
 
