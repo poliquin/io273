@@ -4,6 +4,7 @@
 % March 30, 2015
 
 rng(8675309);
+addpath('derivest')  % files from John D'Errico's DERIVEST suite
 
 %% 2.2(1) Generate and save data for the entry game
 
@@ -31,17 +32,27 @@ saveas(f, 'figs/sim.pdf');
 
 % draw standard normals for the simulation estimator
 [M, F] = size(firms);  % number of markets and potential entrants
-draw = normrnd(0, 1, 100, M*F);
+draws = normrnd(0, 1, 100, M*F);
 
-% likelihood function with mu = x(1) and sigma = exp(x(2))
 theta = [1, 1, 1];  % true, known alpha, beta, delta
-like = @(x) berry(mrkts, firms, entry, x(1), exp(x(2)), theta, draw);
 options = optimset('Display', 'iter', 'TolFun', 10e-10);
-[x, fval] = fminsearch(@(x) -1 * like(x), unifrnd(-1, 4, 2, 1), options);
 
-sprintf('mu = %f\nsigma = %f', x(1), exp(x(2)))
+% likelihood function with mu = x(1) and sigma = x(2)
+like = @(x, ord) berry(mrkts, firms, entry, x(1), x(2), theta, draws, ord);
+initial = [unifrnd(-1, 4), unifrnd(0, 3)];
+sprintf('Starting estimation at mu = %f and sigma = %f', initial)
 
-[hess, ~] = hessian(like, x);
+% estimation assuming entry in order of profitability 2.2(2a)
+[x1, fval1] = fminsearch(@(x) -1 * like(x, 'ascend'), initial, options);
+[hess1, ~] = hessian(@(x) -1 * like(x, 'ascend'), x1);
+se1 = sqrt(diag(inv(hess1)));
+sprintf('2.2(2a)\nmu = %f (%f)\nsigma = %f (%f)', x1(1), se1(1), x1(2), se1(2))
+
+% estimation assuming entry in reverse order 2.2(2b)
+[x2, fval2] = fminsearch(@(x) -1 * like(x, 'descend'), initial, options);
+[hess2, ~] = hessian(@(x) -1 * like(x, 'descend'), x2);
+se2 = sqrt(diag(inv(hess2)));
+sprintf('2.2(2b)\nmu = %f (%f)\nsigma = %f (%f)', x2(1), se2(1), x2(2), se2(2))
 
 
 %% 2.3 Estimate mean costs of entry using moment inequality estimator
