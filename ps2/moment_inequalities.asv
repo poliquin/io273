@@ -93,23 +93,20 @@ for mkt = 1:NumMarkets
 end
 
 % Compute a non-parametric consistent estimator for entry probabilities
-% (Ciliberto and Tamer breaks all their continuous variables into 12 parts. 
-% I break them into 5 because my sample is only 100 markets. 
-% In both his work and this pset, a lot of the probabilities will be equal 
-% to 1 or 0 - but the important thing is that the estimator is consistent.
-delta_fm = repmat(markets(:, 1)*BETA,1,NumFirms) - ALPHA*firms;
-delta_fm_quantiles = ceil(5*tiedrank(delta_fm)./NumMarkets);
-delta_fm_index = delta_fm_quantiles(:,1)*100+delta_fm_quantiles(:,2)*10+delta_fm_quantiles(:,3);
+% (Ciliberto and Tamer breaks continuous variables into 12 parts. I break
+% them into 4 because my sample is only 100 markets. In both his work and 
+% this pset, a lot of the probabilities will be equal to 1 or 0 - but
+% the important thing is that the estimator is consistent.
+delta = repmat(markets(:, 1)*BETA, - ALPHA*firms(m,:)
 
-entry_prob = zeros(NumConfigs, NumMarkets);
-for i=1:NumMarkets
-    entry_prob(:,i) = mean(actual_entry(:,delta_fm_index==delta_fm_index(i)),2);
-end
 
 % Calculate objective function
-obj_h1 = entry_prob - H1hat;
+% THIS OBJECTIVE FUNCTION IS NOT YET CORRECT - NEED TO REPLACE ACTUAL ENTRY
+% WTIH ENTRY PROBABILITIES ESTIMATED NON-PARAMETRICALLY OR A MLOGIT IN STATA.
+% AS IS, THOUGH, IT WORKS, BUT IT IS LIKELY NOT GUARANTEED TO BE CONSISTENT.
+obj_h1 = actual_entry - H1hat;
 obj_h1(obj_h1>0)=0; 
-obj_h2 = entry_prob - H2hat;
+obj_h2 = actual_entry - H2hat;
 obj_h2(obj_h2<0)=0; 
 obj=[];
 for mkt = 1:NumMarkets
