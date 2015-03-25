@@ -56,12 +56,8 @@ sprintf('2.2(2b)\nmu = %f (%f)\nsigma = %f (%f)', x2(1), se2(1), x2(2), se2(2))
 
 
 %% 2.3 Estimate mean costs of entry using moment inequality estimator
-% Works, but CI region is huge. Need to implement Ciliberto-Tamer
-% misspecification correction where the minimum of the obj function need
-% not be zero (in our case it's about 0.75). 
-% Also need to think about if the cut-off need to be divided by n/b or not.
-% (Probably not, since if you do that you get no values in the CI, but the
-% TA and C-T both had terrible notation)...
+% Subsampling strategy is wrong: need to draw from nCb combinations rather
+% than a partition of the sample. Will fix.
 NumSims = 100; % Number of simulations
 theta = [1, 1, 1, 1];  % true, known alpha, beta, delta, sigma
 % draw u
