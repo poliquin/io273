@@ -56,21 +56,20 @@ sprintf('2.2(2b)\nmu = %f (%f)\nsigma = %f (%f)', x2(1), se2(1), x2(2), se2(2))
 
 
 %% 2.3 Estimate mean costs of entry using moment inequality estimator
-% Subsampling strategy is wrong: need to draw from nCb combinations rather
-% than a partition of the sample. Will fix.
-NumSims = 100; % Number of simulations
+NumSims = 10; % Number of simulations of u, should change to 100
 theta = [1, 1, 1, 1];  % true, known alpha, beta, delta, sigma
 % draw u
 for i=1:NumSims
     u(:,:,i) = normrnd(0, theta(4), size(mrkts, 1), size(mrkts, 2) - 2);
 end
 % Find value of obj function at minimum
+options = optimset('Display', 'final', 'TolFun', 10e-10);
 [~, fvalmu] = fminsearch(@(mu) moment_inequalities(theta, mu, mrkts, firms, entry, u), ...
                      unifrnd(-1, 4), options);
 % Define c0 as the 1.25*fvalmu following Ciliberto-Tamer
 c0 = 1.25*fvalmu;
 % Find initial confidence region by evaluating the obj function in a grid
-% of 50 points (from -1.0 to 4.0)
+% of 50 points (from -0.9 to 4.0)
 j=1;
 for i = 1:50
     point(i,1) = moment_inequalities(theta, i/10-1, mrkts, firms, entry, u);
@@ -81,28 +80,77 @@ for i = 1:50
 end
 ci0_lb = min(ci0);
 ci0_ub = max(ci0);
-% Generate subsamples with a subsample size of 4 following Ciliberto-Tamer
+% Generate subsamples with a subsample size of n/4 following Ciliberto-Tamer
 % Compute max value of the obj function of each subsample over initial 
-% confidence region by finding the min of the negative obj function
-for i=0:size(mrkts,1)/5-1
-    lb = i*4+1;
-    ub = i*4+4;
-    [~, cf(i+1)] = fminbnd(@(mu) ...
-        -moment_inequalities(theta, mu, mrkts(lb:ub,:), firms(lb:ub,:), entry(lb:ub,:), u(lb:ub,:,:)), ...
-    ci0_lb, ci0_ub, options);
+% confidence region by finding the min of the negative obj function, and
+% subtract from that the min of the obj function in the same region
+% following Ciliberto-Tamer to correct for potential misspecification.
+b = size(mrkts,1)/4;
+for i=1:100 % 100 subsamples
+    idx = randperm(size(mrkts,1));
+    [~, submin] = fminbnd(@(mu) ...
+        moment_inequalities(theta, mu, mrkts(idx(1:b),:), firms(idx(1:b),:), entry(idx(1:b),:), u(idx(1:b),:,:)), ...
+    ci0_lb-0.09, ci0_ub+0.09, options);
+    [~, cf(i)] = fminbnd(@(mu) ...
+        -moment_inequalities(theta, mu, mrkts(idx(1:b),:), firms(idx(1:b),:), entry(idx(1:b),:), u(idx(1:b),:,:)), ...
+    ci0_lb-0.09, ci0_ub+0.09, options);
+    cf(i) = -cf(i) - submin;
 end
-cf=-cf;
-% Take the 95th percentile and set equal to c1 to compute 95% CI
-c1 = quantile(cf,0.95);
-% compute ci1
+% Take 1/4 the 95th percentile and set equal to c1 to compute 95% CI (1/4
+% because b/n=4)
+c1 = 1/4*quantile(cf,0.95);
+% compute ci1 using Ciliberto and Tamer's estimator modified for
+% misspecification
 j=1;
 for i = 1:50
-    point(i,1) = moment_inequalities(theta, i/10-1, mrkts, firms, entry, u);
-    if point(i,1)<=c1
+    point(i) = moment_inequalities(theta, i/10-1, mrkts, firms, entry, u)-fvalmu;
+    if point(i)<=c1
         ci1(j) = i/10-1;
         j=j+1;
     end
 end
 ci1_lb = min(ci1);
 ci1_ub = max(ci1);
-sprintf('2.3\n lower bond = %f; upper bound = %f', ci1_lb, ci1_ub)
+%% iterate again through another draw of subsamples using new bounds, following CT
+for i=1:100 % 100 subsamples
+    idx = randperm(size(mrkts,1));
+    [~, submin] = fminbnd(@(mu) ...
+        moment_inequalities(theta, mu, mrkts(idx(1:b),:), firms(idx(1:b),:), entry(idx(1:b),:), u(idx(1:b),:,:)), ...
+    ci1_lb-0.09, ci1_ub+0.09, options);
+    [~, cf(i)] = fminbnd(@(mu) ...
+        -moment_inequalities(theta, mu, mrkts(idx(1:b),:), firms(idx(1:b),:), entry(idx(1:b),:), u(idx(1:b),:,:)), ...
+    ci1_lb-0.09, ci1_ub+0.09, options);
+    cf(i) = -cf(i) - submin;
+end
+% Take 1/4 the 95th percentile and set equal to c1 to compute 95% CI (1/4
+% because b/n=4)
+c2 = 1/4*quantile(cf,0.95);
+% compute ci2 using Ciliberto and Tamer's estimator modified for
+% misspecification
+j=1;
+for i = 1:50
+    point(i) = moment_inequalities(theta, i/10-1, mrkts, firms, entry, u)-fvalmu;
+    if point(i)<=c2
+        ci2(j) = i/10-1;
+        j=j+1;
+    end
+end
+ci2_lb = min(ci2);
+ci2_ub = max(ci2);
+% get finer resolution around the bounds
+j=1;
+for i = 1:20
+    point = moment_inequalities(theta, ci2_lb+i/100-1/10, mrkts, firms, entry, u);
+    if point-fvalmu<=c1
+        ci3(j) = ci2_lb+i/100-1/10;
+        j=j+1;
+    end
+    point = moment_inequalities(theta, ci2_ub+i/100-1/10, mrkts, firms, entry, u);
+    if point-fvalmu<=c1
+        ci3(j) = ci2_ub+i/100-1/10;
+        j=j+1;
+    end
+end
+ci3_lb = min(ci3);
+ci3_ub = max(ci3);
+sprintf('2.3\n lower bond = %f; upper bound = %f', ci3_lb, ci3_ub)
