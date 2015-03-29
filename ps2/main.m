@@ -32,7 +32,7 @@ saveas(f, 'figs/sim.pdf');
 
 % draw standard normals for the simulation estimator
 [M, F] = size(firms);  % number of markets and potential entrants
-draws = normrnd(0, 1, 100, M*F);
+draws = normrnd(0, 1, 100, M*F); % Number of draws - USED 1,000 IN PSET
 
 theta = [1, 1, 1];  % true, known alpha, beta, delta
 options = optimset('Display', 'iter', 'TolFun', 10e-10);
@@ -56,7 +56,7 @@ sprintf('2.2(2b)\nmu = %f (%f)\nsigma = %f (%f)', x2(1), se2(1), x2(2), se2(2))
 
 
 %% 2.3 Estimate mean costs of entry using moment inequality estimator
-NumSims = 10; % Number of simulations of u, should change to 100
+NumSims = 10; % Number of simulations of u, USED 100 in PSET
 theta = [1, 1, 1, 1];  % true, known alpha, beta, delta, sigma
 % draw u
 for i=1:NumSims
