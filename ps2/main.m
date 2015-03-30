@@ -4,7 +4,9 @@
 % March 30, 2015
 
 rng(8675309);
-addpath('derivest')  % files from John D'Errico's DERIVEST suite
+dir = mfilename('fullpath');
+cd(dir(1:end-4));
+addpath(strcat('derivest'))  % files from John D'Errico's DERIVEST suite
 
 %% 2.2(1) Generate and save data for the entry game
 
