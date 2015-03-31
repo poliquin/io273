@@ -30,3 +30,11 @@ folder `ps2` should have the following sub-directories:
 
 Code in the `derivest` folder is from John D'Errico's DERIVEST suite.
 It is used to compute hessians of the likelihood functions.
+
+Problem Set 3
+-------------
+
+Code for the third problem set requires the `ascending_data.dat` and
+`fpa.dat` files. These should be placed in the `ps3` directory before
+running `main.m`.
+
