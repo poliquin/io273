@@ -12,5 +12,12 @@ cd(dir(1:end-4));
 
 X = dlmread('ascending_data.dat');
 F = orderstat(X, 34, 100, 2);
-plot(34:2:100, mean(F, 2))
+
+% create a histogram of simulation values
+f = figure('PaperPosition', [.1, .2, 6.2, 3.5], 'PaperSize', [6.4, 4]);
+p1 = plot(34:2:100, mean(F, 2))
+xlabel('Value')
+ylabel('')
+title('CDF of Value Distribution')
+saveas(f, 'figs/ascending_values.pdf');
 
