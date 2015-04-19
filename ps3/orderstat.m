@@ -21,7 +21,7 @@ function [F] = orderstat(X, small, large, stepsize)
         % find roots for n-1 order statistic, which equal F(v)
         % this function solves expression for n-1 order statistic for F(v),
         % given a number of bidders n and a value for G(v).
-        f = arrayfun(@(t) fzero(@(x) ostat(unq(t), g(t), x), 0.5), 1:nu);
+        f = arrayfun(@(t) fzero(@(x) ostat(unq(t), g(t), x), [0 1]), 1:nu);
         F(i,:) = f;
     end
 
