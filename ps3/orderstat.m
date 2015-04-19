@@ -1,6 +1,13 @@
 function [F] = orderstat(X, small, large, stepsize)
-    % Estimate CDF of private values, F(v) from ascending auction data
-    % using distribution for n-1 order statistic, G(v).
+    % ORDERSTAT Estimate CDF of private values, F(v) from ascending auction
+    %           data using distribution for n-1 order statistic, G(v).
+    % Input arguments:
+    %   X = T by 2 matrix with auction rows and #bidders, price in columns
+    %   small = lowest value of v to estimate F(v) for
+    %   large = highest value of v to estimate F(v) for
+    %   stepsize = size of increments between small and large
+    % Outputs:
+    %   F = values of F(v) for auctions with n bids
 
     syms x;  % distribution of second order statistic with n bidders
     ostat = @(n, g, x) (n - (n-1)*x) * x^(n-1) - g;  % g = G(v)
