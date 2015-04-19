@@ -28,14 +28,14 @@ saveas(f, 'figs/ascending_values.pdf');
 ub = min(F, [], 2);
 
 % lower bound is maximum of estimated values, assuming min bid increment = 1
-lb = max(orderstat(X, 20, 160, 2, 1), [], 2);
+lb = max(orderstat_n_2(X, 20, 160, 2, 1), [], 2);
 
 x = [20:2:160]';
 f = figure('PaperPosition', [.1, .2, 6.2, 3.5], 'PaperSize', [6.4, 4]);
 ax1 = axes('Parent', f, 'FontSize', 11);
-area(x, lb, 'FaceColor', [0.5 0.9 0.6])
+area(x, ub, 'FaceColor', [0.5 0.9 0.6])
 hold on
-area(x, ub, 'FaceColor', [1.0 1.0 1.0])
+area(x, lb, 'FaceColor', [1.0 1.0 1.0])
 %plot(x, mean(F, 2), 'r--')  % uncomment to also plot earlier cdf estimate
 hold off
 xlabel('Value', 'FontSize', 12);
