@@ -1,4 +1,4 @@
-function [Y, X] = sim_dataset(N, k, SIGMA, BETA, ALPHA)
+function [Y, X, P] = sim_dataset(N, k, SIGMA, ALPHA, BETA)
     % Generate dataset for part 2 of the problem set
     % Input Arguments:
     %   N = Number of observations
@@ -7,18 +7,18 @@ function [Y, X] = sim_dataset(N, k, SIGMA, BETA, ALPHA)
     %   BETA = scalar
     %   ALPHA = scalar
     % Outputs:
-    %   Y = N by k matrix
-    %   X = N by 1 vector
+    %   Y = N by 1 vector
+    %   X = NK by 1 vector
     A_ODD = [1, 1; 1, -1]; A_EVEN = [-1, 1; 1, 1];
-    Y = zeros(N,1); X = zeros(N,2);
+    Y = zeros(N,1); X = zeros(N*k,1); P = zeros(N*k,1);
     for i = 1:N
         % Draw X, p, EPSILON (2 by 1)
-        Xi = mvnrnd(zeros(2,1), eye(2));
-        p = mvnrnd(zeros(2,1), eye(2));
+        X_i = mvnrnd(zeros(k,1), eye(k));
+        p_i = mvnrnd(zeros(k,1), eye(k));
         EPSILON = mvnrnd(zeros(2,1),SIGMA);
 
         % Calculate y_star (k by 1)
-        y_star = Xi * BETA + p * ALPHA + EPSILON;
+        y_star = X_i * BETA + p_i * ALPHA + EPSILON;
 
         % Calculate y
         if mod(i,2) == 0
@@ -27,5 +27,6 @@ function [Y, X] = sim_dataset(N, k, SIGMA, BETA, ALPHA)
             y = all(A_ODD*y_star' > 0);
         end
         Y(i,:) = y;
-        X(i,:) = Xi';
+        X((i-1)*k+1:i*k,:) = X_i;
+        P((i-1)*k+1:i*k,:) = p_i;
     end
