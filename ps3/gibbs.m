@@ -24,6 +24,7 @@ function [ALPHA, BETA, SIGMA] = gibbs(Y,X,runs)
     % Initialize parameters
     ALPHA(1)=normrnd(0,1); BETA(1)=normrnd(0,1);
     SIGMA(:,:,1)=zeros(2); sigmaold = eye(K);
+    SIGMA(:,:,1)=sigmaold;
     betaold = [BETA(1); ALPHA(1)];
     
     % Set priors (Based on R Code by Rossi)
@@ -31,11 +32,12 @@ function [ALPHA, BETA, SIGMA] = gibbs(Y,X,runs)
     A = 0.01 * eye(K); % Prior variance for BETA
     NU = K+2; % Prior DoF for SIGMA
     V = NU * eye(K); % Prior scale matrix for SIGMA
+    y_init = zeros(K,1);
     
     % Run Gibbs procedure
     for i = 1:runs
         % Draw y_star from truncated normal given ALPHA, BETA, and SIGMA
-        y_star = drawystar(X,Y,betaold,sigmaold);
+        [y_star,y_term] = drawystar(X,Y,betaold,sigmaold,y_init);
         
         % Draw ALPHA, BETA given y_star and SIGMA
         betanew = drawbeta(y_star, X, betabar, sigmaold,A);
@@ -51,31 +53,48 @@ function [ALPHA, BETA, SIGMA] = gibbs(Y,X,runs)
         
         % Update 
         betaold=betanew; sigmaold=sigmanew;
+        y_init = y_term;
         
         % Print every 100 iterations
     end
 end
 
-function [mu, tau] = postmean(z_i,beta,sigma,w_i,j)
+function [mu, tau] = postmean(X_i,beta,sigma,w_i,j)
     % Returns posterior mean (2by1) and variance (2by2) from the given data
     % INPUTS
-    %   z_i = 2 by 2 matrix of data ([x_i, p_i] in pset)
+    %   X_i = 2 by 2 matrix of data ([x_i, p_i] in pset)
     %   beta = 2 by 1 vector of coefficients ([BETA, ALPHA] in pset)
     %   sigma = 2 by 2 covariance matrix
+    %   w_i = 2 by 1 vector
     %   j = Either 1 or 2.
     % OUTPUTS
     %   mu = p by 1 vector of means
     %   sig = p by p matrix of covariances
-    if j == 1
-        tau = sigma(1,1)-sigma(1,2)^2/sigma(2,2);
-        mu = z_i(1,:)*beta + sigma(1,2)/sigma(2,2)*(w_i(2) - z_i(2,:)*beta);
-    else 
-        tau = sigma(2,2)-sigma(1,2)^2/sigma(1,1);
-        mu = z_i(2,:)*beta + sigma(1,2)/sigma(1,1)*(w_i(1) - z_i(1,:)*beta);
-    end
+    global K;
+    % following book
+    siginv = sigma\eye(K);
+    gamma = siginv(j,:);
+    gamma(j) = [];
+    F = -siginv(j,j) * gamma;
+    xij = X_i(j,:)';
+    xi_j = X_i;
+    xi_j(j,:)=[]; % delete jth row
+    wi_j = w_i;
+    wi_j(j) = [];
+    mu = xij'*beta + F'*(wi_j-xi_j*beta);
+    tau = 1/siginv(j,j);
+%     if j == 1
+% %         tau = sigma(1,1)-sigma(1,2)^2/sigma(2,2);
+%         tau = 1/sigma(1,1);
+%         mu = z_i(1,:)*beta + sigma(1,2)/sigma(2,2)*(w_i(2) - z_i(2,:)*beta);
+%     else 
+% %         tau = sigma(2,2)-sigma(1,2)^2/sigma(1,1);
+%         tau = 1/sigma(2,2);
+%         mu = z_i(2,:)*beta + sigma(1,2)/sigma(1,1)*(w_i(1) - z_i(1,:)*beta);
+%     end
 end
 
-function y_star = drawystar(X, Y, beta, sigma)
+function [y_star, y_term] = drawystar(X, Y, beta, sigma,y_init)
     % Draws y_star from a series of truncated Normal distributions
     % INPUT
     %   X = N*K by p vector of observed data
@@ -89,7 +108,7 @@ function y_star = drawystar(X, Y, beta, sigma)
     
     % Declare variables 
     y_star = zeros(N*K,1); % y_star stores N values of y_star_i
-    ystar_old = zeros(2,1); % ystar_old is old value of y_star_i; to be replaced by y_star_new
+    ystar_old = y_init; % ystar_old is old value of y_star_i; to be replaced by y_star_new
     
     % For each observation, draw over the posterior
     for i=1:N
@@ -118,16 +137,17 @@ function y_star = drawystar(X, Y, beta, sigma)
                 [mu, tau] = postmean(z_i, beta, sigma,ystar_new,j);
                 
                 % Draw from posterior using simple acceptance algorithm
-                ystar_new(j) = normrnd(mu,tau);
+                ystar_new(j) = normrnd(mu,tau)
+                Ay = weight * ystar_new
                 if y == 1
                     % Need Ay>0
-                    cont = weight * ystar_new <= 0;
+                    cont = not(all(Ay >= 0));
                 else
                     % Need Ay <0
-                    cont = weight * ystar_new >= 0;
+                    cont = not(all(Ay <= 0));
                 end
                 % Update ystar
-                ystar_old = ystar_new;
+                
                 c_count = c_count+1;
                 if mod(c_count,10000) == 0
                     disp(['c_count, y, eval'])
@@ -135,9 +155,11 @@ function y_star = drawystar(X, Y, beta, sigma)
                     disp(weight * ystar_new)
                 end
             end
+            ystar_old = ystar_new
         end
         y_star((i-1)*K+1:i*K,:) = ystar_new;
     end
+    y_term = ystar_new;
 end
 
 function beta = drawbeta(y_star, X, betabar, sigma, A)
@@ -169,21 +191,17 @@ function sigma = drawsigma(X,b,ystar,V,NU)
     %   ystar = N*K by 1 vector of latent utilities
     global N; global K;
     % Run regression, get epsilons
-    epsilon = reshape(ystar - X*b,[],2);
-    epsilon = sum(epsilon.^2);
+    epsilon = reshape(ystar - X*b,2,[]);
+%     S = epsilon*epsilon';
+    S = diag(sum(epsilon.^2,2));
     
     % Draw from posterior
-    sigma = wishrnd((V + epsilon'*epsilon)\eye(K),NU+N);
-%     Might need to set above line to G and run following line?
-%     sigma = G \ eye(K);
-end
-
-function r = getK
-    global K
-    r = K;
-end
-
-function r = getN
-    global N
-    r = N;
+    % VERSION 1
+%     G = wishrnd(V + epsilon'*epsilon,NU+N);
+%     sigma = G\eye(K);
+    % VERSION 2
+    siginv = wishrnd((V + S)\eye(K),NU+N);
+    sigma = siginv \ eye(K);
+    % VERSION 3 - book version
+%     sigma = iwishrnd(V + epsilon*epsilon',NU+N);
 end
