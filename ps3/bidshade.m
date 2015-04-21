@@ -12,18 +12,20 @@ function [V] = bidshade(bids, maxopp, bwidth)
 
     T = size(bids, 1);  % number of auctions
     V = zeros(T, 1);
+    kern = @(x) (1/sqrt(2*pi)) .* exp(-0.5 .* x.^2);
 
     for t = 1:T  % each auction-bid combo is estimated separately
-        kern = makedist('Normal', 'mu', bids(t) / bwidth, 'sigma', 1);
+        %kern = makedist('Normal', 'mu', bids(t) / bwidth, 'sigma', 1);
         % find auctions in which max opponent bid is less than player i bid
         mask = maxopp < bids(t);
         mbid = bids(mask);
         % evaluate kernel function at these bids
-        G = arrayfun(@(x) pdf(kern, x / bwidth), mbid, 'UniformOutput', false);
+        G = arrayfun(@(x) kern((x - bids(t)) / bwidth), mbid, ...
+                     'UniformOutput', false);
         G = sum(cell2mat(G)) / (T * bwidth);
-        g = arrayfun(@(x, y) prod(pdf(kern, [x, y] ./ bwidth)), bids, ...
-                     maxopp, 'UniformOutput', false);
-        g = sum(cell2mat(g)) / (T * bwidth);
+        g = arrayfun(@(x, y) prod(kern(([x y] - bids(t)) ./ bwidth)), ...
+                     bids, maxopp, 'UniformOutput', false);
+        g = sum(cell2mat(g)) / (T * bwidth^2);
         % calculate amount bid is shaded and player i valuation in auction t
         shade = G / g;
         V(t) = bids(t) + shade;

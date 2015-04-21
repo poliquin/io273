@@ -48,10 +48,10 @@ saveas(f, 'figs/ascending_bounds.png');
 % ----------------------------------------------------------------------------
 
 fpa = dlmread('fpa.dat');
-[T M] = size(fpa);
+[T, M] = size(fpa);
 
 FU = zeros(T, M);  % matrix to hold estimated values
-bw = 12;  % bandwidth parameter for kernel function
+bw = 12.8;  % bandwidth parameter for kernel function
 % get psuedo private values for each bidder, i
 for i = 1:M
     sprintf('Estimating values for bidder %i', i)
@@ -67,17 +67,25 @@ end
 % use psuedo private values to estimate empirical cdf for each bidder
 ui = mat2cell(FU, T, ones(1, M));
 cdf = arrayfun(@(z) cell2mat(cellfun(@(x) mean(x < z), ui, 'UniformOutput', ...
-                             false)), [0:2:160]', 'UniformOutput', false);
+                             false)), (0:2:250)', 'UniformOutput', false);
 cdf = cell2mat(cdf);
 
 % plot value distribution for each bidder
 f = figure('PaperPosition', [.1, .2, 6.2, 3.5], 'PaperSize', [6.4, 4]);
-p1 = plot(0:2:160, cdf);
+p1 = plot(0:2:250, cdf);
 xlabel('Value')
 ylabel('')
 title('CDF of Value Distributions, 4 Bidders')
 saveas(f, 'figs/fpa_values.pdf');
 
+% evaluate cdf of value distributions at 25th percentile of valuations
+p25 = arrayfun(@(z) cell2mat(cellfun(@(x) mean(x < z), ui, 'UniformOutput', ...
+                        false)), prctile(FU, 25)', 'UniformOutput', false);
+p25 = cell2mat(p25)
+% evaluate cdf of value distributions at 75th percentile of valuations
+p75 = arrayfun(@(z) cell2mat(cellfun(@(x) mean(x < z), ui, 'UniformOutput', ...
+                        false)), prctile(FU, 75)', 'UniformOutput', false);
+p75 = cell2mat(p75)
 
 %% Section 2, Question 1
 % ----------------------------------------------------------------------------
