@@ -14,7 +14,7 @@ function [ALPHA, BETA, SIGMA] = gibbs(Y,X,runs)
     %   ALPHA = runs by 1 vector
     %   BETA = runs by 1 vector
     %   SIGMA = 2*runs by 2 matrix
-    global K; K = 2; % K is the number of choice options
+    global K; K = size(X,2); % K is the number of choice options
     global N; N = 100; 
     
     % Declare outputs
@@ -25,7 +25,11 @@ function [ALPHA, BETA, SIGMA] = gibbs(Y,X,runs)
     ALPHA(1)=normrnd(0,1); BETA(1)=normrnd(0,1);
     SIGMA(:,:,1)=zeros(2); sigmaold = eye(K);
     SIGMA(:,:,1)=sigmaold;
-    betaold = [BETA(1); ALPHA(1)];
+    if K==2
+        betaold = [BETA(1); ALPHA(1)];
+    else
+        betaold = BETA(1);
+    end
     
     % Set priors (Based on R Code by Rossi)
     betabar = zeros(K,1); % Prior mean for BETA
@@ -71,27 +75,32 @@ function [mu, tau] = postmean(X_i,beta,sigma,w_i,j)
     %   mu = p by 1 vector of means
     %   sig = p by p matrix of covariances
     global K;
-    % following book
-    siginv = sigma\eye(K);
-    gamma = siginv(j,:);
-    gamma(j) = [];
-    F = -siginv(j,j) * gamma;
-    xij = X_i(j,:)';
-    xi_j = X_i;
-    xi_j(j,:)=[]; % delete jth row
-    wi_j = w_i;
-    wi_j(j) = [];
-    mu = xij'*beta + F'*(wi_j-xi_j*beta);
-    tau = 1/siginv(j,j);
-%     if j == 1
-% %         tau = sigma(1,1)-sigma(1,2)^2/sigma(2,2);
-%         tau = 1/sigma(1,1);
-%         mu = z_i(1,:)*beta + sigma(1,2)/sigma(2,2)*(w_i(2) - z_i(2,:)*beta);
-%     else 
-% %         tau = sigma(2,2)-sigma(1,2)^2/sigma(1,1);
-%         tau = 1/sigma(2,2);
-%         mu = z_i(2,:)*beta + sigma(1,2)/sigma(1,1)*(w_i(1) - z_i(1,:)*beta);
+%     % following book
+%     siginv = sigma\eye(K);
+%     gamma = siginv(j,:);
+%     gamma(j) = [];
+%     F = -siginv(j,j) * gamma;
+%     xij = X_i(j,:)';
+%     xi_j = X_i;
+%     xi_j(j,:)=[]; % delete jth row
+%     wi_j = w_i;
+%     wi_j(j) = [];
+%     
+%     % Check for empty matrices
+%     if isempty(F)
+%         F=0;
 %     end
+%     if isempty(xi_j)
+%         xi_j=0;
+%     end
+%     if isempty(wi_j)
+%         wi_j=0;
+%     end
+%     mu = xij'*beta + F'*(wi_j-xi_j*beta);
+%     tau = 1/siginv(j,j);
+    % Simply drawing from multivariate normal
+    mu = X_i * beta;
+    tau = sigma\eye(K);
 end
 
 function [y_star, y_term] = drawystar(X, Y, beta, sigma,y_init)
@@ -126,7 +135,7 @@ function [y_star, y_term] = drawystar(X, Y, beta, sigma,y_init)
         %-------------------------------------------
         %  beta_10  |-> beta_10_new \|  beta_10_new 
         %  beta_11 /|    beta_11     |-> beta_11_new 
-        for j=1:2
+        for j=1:K-1
             % Draw from truncated normal
             cont = true;
             c_count = 1;
@@ -137,8 +146,9 @@ function [y_star, y_term] = drawystar(X, Y, beta, sigma,y_init)
                 [mu, tau] = postmean(z_i, beta, sigma,ystar_new,j);
                 
                 % Draw from posterior using simple acceptance algorithm
-                ystar_new(j) = normrnd(mu,tau)
-                Ay = weight * ystar_new
+%                 ystar_new(j) = normrnd(mu,tau);
+                ystar_new = mvnrnd(mu,tau)';
+                Ay = weight * ystar_new;
                 if y == 1
                     % Need Ay>0
                     cont = not(all(Ay >= 0));
@@ -155,7 +165,7 @@ function [y_star, y_term] = drawystar(X, Y, beta, sigma,y_init)
                     disp(weight * ystar_new)
                 end
             end
-            ystar_old = ystar_new
+            ystar_old = ystar_new;
         end
         y_star((i-1)*K+1:i*K,:) = ystar_new;
     end
