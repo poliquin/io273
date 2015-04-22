@@ -36,5 +36,5 @@ Problem Set 3
 
 Code for the third problem set requires the `ascending_data.dat` and
 `fpa.dat` files. These should be placed in the `ps3` directory before
-running `main.m`.
+running `main.m`. `ps3` should have a `figs` folder for saving plots.
 

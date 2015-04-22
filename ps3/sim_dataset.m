@@ -1,4 +1,4 @@
-function [Y, X, P] = sim_dataset(N, k, SIGMA, ALPHA, BETA)
+function [Y, X, P, A] = sim_dataset(N, k, SIGMA, BETA, ALPHA)
     % Generate dataset for part 2 of the problem set
     % Input Arguments:
     %   N = Number of observations
@@ -23,10 +23,13 @@ function [Y, X, P] = sim_dataset(N, k, SIGMA, ALPHA, BETA)
         % Calculate y
         if mod(i,2) == 0
             y = all(A_EVEN*y_star' > 0);
+            A(:, :, i) = A_EVEN;
         else
             y = all(A_ODD*y_star' > 0);
+            A(:, :, i) = A_ODD;
         end
         Y(i,:) = y;
         X((i-1)*k+1:i*k,:) = X_i;
         P((i-1)*k+1:i*k,:) = p_i;
     end
+end
