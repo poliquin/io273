@@ -9,7 +9,7 @@ N=100;  K=2; SIGMA=[1,1;1,2]; ALPHA=1; BETA=1;
 [Y, X, P,As] = sim_dataset(N, K, SIGMA, ALPHA, BETA);
 
 %% Run gibbs using three different starting points and 10000 runs
-runs = 10000;
+runs = 10;
 init = zeros(3,2); initsig = zeros(2,2,3);
 alpha = zeros(runs+1,3); beta = zeros(runs+1,3);
 sigma = zeros(2,2,runs+1,3);
