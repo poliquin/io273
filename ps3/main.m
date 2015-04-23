@@ -92,18 +92,18 @@ p75 = cell2mat(p75)
 % ----------------------------------------------------------------------------
 
 % Simulate data
-[Y, X, P, A] = sim_dataset(100, 2, [1, 1; 1, 2], 1, 1);
+[Y, X, P, A,YS] = sim_dataset(100, 2, [1, 1; 1, 2], 1, 1);
 
 % Set location of priors
-beta = 2;
-alpha = 2;
+beta = 1;
+alpha = 1;
 sigma = [1,1; 1,2];
 % Set diffusion of priors
-alpha_var = 1;
-beta_var = 1;
+alpha_var = .01;
+beta_var = .01;
 v = 1;
 
-for sim = 1:1000
+for sim = 1:100
 %% Step 1: Draw latent varaible w
 % Draw latent variable w, which has two columns, from the truncated 
 % multivariate normal distribution via rejection sampling
@@ -123,16 +123,25 @@ for i=1:100
 end
 
 % Transform to stacked form
-X_stack = [X(:,1);X(:,2)];
-P_stack = [P(:,1);P(:,2)];
-w_stack = [w(:,1);w(:,2)];
+for i=1:100
+X_stack(2*i-1:2*i,1) = [X(i,1);X(i,2)];
+P_stack(2*i-1:2*i,1) = [P(i,1);P(i,2)];
+w_stack(2*i-1:2*i,1) = [w(i,1);w(i,2)];
+end
 
 X_reg = [X_stack,P_stack];
 beta_reg = [beta(sim); alpha(sim)];
 A_reg = [beta_var, 0; 0,alpha_var];
 
 %% Step 2: Find posterior beta
-beta_hat = mvnrnd(inv(X_reg'*X_reg + A_reg)*(X_reg'*w_stack + A_reg*beta_reg),inv(X_reg'*X_reg + A_reg));
+G = sigma(:,:,sim)\eye(2); % G is sigma inverted
+C = chol(G,'lower');
+Xstar = kron(eye(100),C')*X_reg;
+ystar = kron(eye(100),C')*w_stack;
+% Calculate mean and variance (p.213 McCulloch & Rossi 1994)
+sig = (Xstar'*Xstar + A_reg)\eye(2);
+betahat = sig * (Xstar'*ystar + A_reg*beta_reg);
+beta_hat = mvnrnd(betahat,sig);
 beta(sim+1) = beta_hat(1,1);
 alpha(sim+1) =beta_hat(1,2); 
 
@@ -144,7 +153,10 @@ end
 ep_sum = sum(ep_sum,3);
 
 sigma(:,:,sim+1) = iwishrnd(sigma(:,:,sim) + ep_sum, v + 100);
-end
 
 %% Scale all variables by first term in the error matrix
-
+scale = squeeze(sigma(1,1,:));
+beta = beta./scale';
+alpha = alpha./scale';
+sigma = sigma./repmat(sigma(1,1,:),2);
+end
