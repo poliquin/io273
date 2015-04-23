@@ -7,7 +7,7 @@ clear all
 rng(8675309);
 dir = mfilename('fullpath');
 cd(dir(1:end-4));
-
+%{
 %% Section 1, Question 1
 % ----------------------------------------------------------------------------
 
@@ -87,6 +87,7 @@ p75 = arrayfun(@(z) cell2mat(cellfun(@(x) mean(x < z), ui, 'UniformOutput', ...
                         false)), prctile(FU, 75)', 'UniformOutput', false);
 p75 = cell2mat(p75)
 
+%}
 %% Section 2, Question 1
 % ----------------------------------------------------------------------------
 
@@ -96,13 +97,13 @@ p75 = cell2mat(p75)
 % Set location of priors
 beta = 2;
 alpha = 2;
-sigma = [1,2,; 2,6];
+sigma = [1,1; 1,2];
 % Set diffusion of priors
 alpha_var = 1;
 beta_var = 1;
 v = 1;
 
-for sim = 1:1
+for sim = 1:1000
 %% Step 1: Draw latent varaible w
 % Draw latent variable w, which has two columns, from the truncated 
 % multivariate normal distribution via rejection sampling
@@ -131,9 +132,9 @@ beta_reg = [beta(sim); alpha(sim)];
 A_reg = [beta_var, 0; 0,alpha_var];
 
 %% Step 2: Find posterior beta
-beta_hat = inv(X_reg'*X_reg + A_reg)*(X_reg'*w_stack + A_reg*beta_reg);
+beta_hat = mvnrnd(inv(X_reg'*X_reg + A_reg)*(X_reg'*w_stack + A_reg*beta_reg),inv(X_reg'*X_reg + A_reg));
 beta(sim+1) = beta_hat(1,1);
-alpha(sim+1) = beta_hat(2,1); 
+alpha(sim+1) =beta_hat(1,2); 
 
 %% Step 3: Find posterior sigma_hat
 epsilon_hat =  w - (X*beta(sim+1) + P*alpha(sim+1));
@@ -142,7 +143,8 @@ for i =1:100
 end
 ep_sum = sum(ep_sum,3);
 
-inv_sigmahat = wishrnd(sigma(:,:,sim) + ep_sum, v + 100);
-sigma(:, :, sim+1) = inv(inv_sigmahat);
+sigma(:,:,sim+1) = iwishrnd(sigma(:,:,sim) + ep_sum, v + 100);
 end
+
+%% Scale all variables by first term in the error matrix
 
