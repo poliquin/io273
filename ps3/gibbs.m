@@ -101,7 +101,6 @@ function [y_star, y_term] = drawystar(X, Y, beta, sigma,y_init)
         cont = true;
         c_count = 1;
         while cont
-            ystar_new = ystar_old;
             % Calculate posterior conditional means
             z_i = X((i-1)*K+1:i*K,:); % [x_i, p_i]=2by2 matrix
             mu = z_i * beta;
@@ -150,8 +149,8 @@ function beta = drawbeta(y_star, X, betabar, sigma, A)
     global K; global N;
     G = sigma\eye(K); % G is sigma inverted
     C = chol(G,'lower');
-    Xstar = kron(eye(N),C')*X;
-    ystar = kron(eye(N),C')*y_star;
+    Xstar = kron(eye(N),C)*X;
+    ystar = kron(eye(N),C)*y_star;
     % Calculate mean and variance (p.213 McCulloch & Rossi 1994)
     sig = (Xstar'*Xstar + A)\eye(K);
     betahat = sig * (Xstar'*ystar + A*betabar);
@@ -166,7 +165,7 @@ function sigma = drawsigma(X,b,ystar,V,NU)
     %   X = N*K by 2 matrix
     %   b = 2 by 1 vector (=[BETA,ALPHA])
     %   ystar = N*K by 1 vector of latent utilities
-    global N;
+    global N; global K;
     % Run regression, get epsilons
     epsilon = reshape(ystar - X*b,2,[]);
     
