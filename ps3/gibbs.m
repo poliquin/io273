@@ -149,8 +149,9 @@ function beta = drawbeta(y_star, X, betabar, sigma, A)
     global K; global N;
     G = sigma\eye(K); % G is sigma inverted
     C = chol(G,'lower');
-    Xstar = kron(eye(N),C)*X;
-    ystar = kron(eye(N),C)*y_star;
+    %C = sqrtm(G);
+    Xstar = kron(eye(N),C')*X;
+    ystar = kron(eye(N),C')*y_star;
     % Calculate mean and variance (p.213 McCulloch & Rossi 1994)
     sig = (Xstar'*Xstar + A)\eye(K);
     betahat = sig * (Xstar'*ystar + A*betabar);
