@@ -7,7 +7,7 @@ clear all
 rng(8675309);
 dir = mfilename('fullpath');
 cd(dir(1:end-4));
-%{
+
 %% Section 1, Question 1
 % ----------------------------------------------------------------------------
 
@@ -24,14 +24,22 @@ saveas(f, 'figs/ascending_values.pdf');
 
 %% Section 1, Question 2 (Haile & Tamer, 2003)
 % ----------------------------------------------------------------------------
+% Set smoothing parameter, which increases with N for consistency
+rho = -1/600*size(X,1);
+% Assume first price English auction
+% upper bound is min of estimated values of the nth order statistic
+y = orderstat_n(X,20,120,1,1);
+numerator = y.*exp(y*rho);
+denominator = sum(exp(y*rho),2);
+ub = sum(numerator./repmat(denominator,1,3), 2);
 
-% upper bound is minimum of previously estimated values from order statistic
-ub = min(F, [], 2);
+% lower bound is maximum of estimated values of the n-1th order statistic
+y = orderstat(X,20,120,1,1);
+numerator = y.*exp(y*-rho);
+denominator = sum(exp(y*-rho),2);
+lb = sum(numerator./repmat(denominator,1,3), 2);
 
-% lower bound is maximum of estimated values, assuming min bid increment = 1
-lb = max(orderstat_n_2(X, 20, 160, 2, 1), [], 2);
-
-x = [20:2:160]';
+x = [20:1:120]';
 f = figure('PaperPosition', [.1, .2, 6.2, 3.5], 'PaperSize', [6.4, 4]);
 ax1 = axes('Parent', f, 'FontSize', 11);
 area(x, ub, 'FaceColor', [0.5 0.9 0.6])
@@ -90,73 +98,3 @@ p75 = cell2mat(p75)
 %}
 %% Section 2, Question 1
 % ----------------------------------------------------------------------------
-
-% Simulate data
-[Y, X, P, A,YS] = sim_dataset(100, 2, [1, 1; 1, 2], 1, 1);
-
-% Set location of priors
-beta = 1;
-alpha = 1;
-sigma = [1,1; 1,2];
-% Set diffusion of priors
-alpha_var = .01;
-beta_var = .01;
-v = 1;
-
-for sim = 1:100
-%% Step 1: Draw latent varaible w
-% Draw latent variable w, which has two columns, from the truncated 
-% multivariate normal distribution via rejection sampling
-for i=1:100
-    flag = 0; % initialize rejection flag
-    while flag==0
-        w(i,:) = mvnrnd(X(i,:)*beta(sim) + P(i,:)*alpha(sim), sigma(:,:,sim)); % draw from multivariate normal
-        yhat = A(:,:,i)*w(i,:)'; % Find latent y
-        % Implement indicator function for y
-        yhat(yhat<0)=0; % Set negative latent y to 0
-        yhat = all(yhat); % Set observed latent y to 1 if all elements are non-zero, or 0 otherwise
-        % Reject if do not agree with data
-        if Y(i)==yhat
-            flag = 1;
-        end
-    end
-end
-
-% Transform to stacked form
-for i=1:100
-X_stack(2*i-1:2*i,1) = [X(i,1);X(i,2)];
-P_stack(2*i-1:2*i,1) = [P(i,1);P(i,2)];
-w_stack(2*i-1:2*i,1) = [w(i,1);w(i,2)];
-end
-
-X_reg = [X_stack,P_stack];
-beta_reg = [beta(sim); alpha(sim)];
-A_reg = [beta_var, 0; 0,alpha_var];
-
-%% Step 2: Find posterior beta
-G = sigma(:,:,sim)\eye(2); % G is sigma inverted
-C = chol(G,'lower');
-Xstar = kron(eye(100),C')*X_reg;
-ystar = kron(eye(100),C')*w_stack;
-% Calculate mean and variance (p.213 McCulloch & Rossi 1994)
-sig = (Xstar'*Xstar + A_reg)\eye(2);
-betahat = sig * (Xstar'*ystar + A_reg*beta_reg);
-beta_hat = mvnrnd(betahat,sig);
-beta(sim+1) = beta_hat(1,1);
-alpha(sim+1) =beta_hat(1,2); 
-
-%% Step 3: Find posterior sigma_hat
-epsilon_hat =  w - (X*beta(sim+1) + P*alpha(sim+1));
-for i =1:100
-    ep_sum(:, :,i) = epsilon_hat(i,:)'*epsilon_hat(i,:);
-end
-ep_sum = sum(ep_sum,3);
-
-sigma(:,:,sim+1) = iwishrnd(sigma(:,:,sim) + ep_sum, v + 100);
-
-%% Scale all variables by first term in the error matrix
-scale = squeeze(sigma(1,1,:));
-beta = beta./scale';
-alpha = alpha./scale';
-sigma = sigma./repmat(sigma(1,1,:),2);
-end
