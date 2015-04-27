@@ -14,7 +14,6 @@ cd(dir(1:end-4));
 X = dlmread('ascending_data.dat');
 F = orderstat(X, 20, 160, 2, 0);
 
-% create a histogram of simulation values
 f = figure('PaperPosition', [.1, .2, 6.2, 3.5], 'PaperSize', [6.4, 4]);
 p1 = plot(20:2:160, mean(F, 2))
 xlabel('Value')
@@ -73,28 +72,33 @@ for i = 1:M
 end
 
 % use psuedo private values to estimate empirical cdf for each bidder
-ui = mat2cell(FU, T, ones(1, M));
-cdf = arrayfun(@(z) cell2mat(cellfun(@(x) mean(x < z), ui, 'UniformOutput', ...
-                             false)), (0:2:250)', 'UniformOutput', false);
-cdf = cell2mat(cdf);
+uir = mat2cell(FU, ones(1, T), 4);
+cdf = @(z) mean(cell2mat(arrayfun(@(x) all(cell2mat(x) < z), ...
+                                  uir, 'UniformOutput', false)));
+% evaluate cdf at 16 combinations of 25th or 75th percentiles of values
+tiles = {[25 75], [25 75], [25 75], [25 75]};
+[w, x, y, z] = ndgrid(tiles{:});
+combos = [w(:) x(:) y(:) z(:)];
+numcmb = size(combos, 1);
 
-% plot value distribution for each bidder
+cdfvalues = zeros(numcmb, 9);
+for i = 1:numcmb
+   quin = diag(prctile(FU, combos(i,:)))';  % get desired quintile of marginal
+   cdfvalues(i,:) = [combos(i,:) quin, cdf(quin)];
+end
+sprintf('CDF Under Asymmetric Private Values')
+cdfvalues
+
+% Symmetric, independent, private values
+v = cell2mat(arrayfun(@(x) symmetry(x, fpa, 12.8), fpa(:), ...
+                      'UniformOutput', false));
+pv = arrayfun(@(x) mean(v <= x), 0:2:150, 'UniformOutput', false);
 f = figure('PaperPosition', [.1, .2, 6.2, 3.5], 'PaperSize', [6.4, 4]);
-p1 = plot(0:2:250, cdf);
+p1 = plot(0:2:150, cell2mat(pv))
 xlabel('Value')
 ylabel('')
-title('CDF of Value Distributions, 4 Bidders')
-saveas(f, 'figs/fpa_values.pdf');
+title('CDF of Symmetric Value Distribution')
+saveas(f, 'figs/symmetric_values.pdf');
 
-% evaluate cdf of value distributions at 25th percentile of valuations
-p25 = arrayfun(@(z) cell2mat(cellfun(@(x) mean(x < z), ui, 'UniformOutput', ...
-                        false)), prctile(FU, 25)', 'UniformOutput', false);
-p25 = cell2mat(p25)
-% evaluate cdf of value distributions at 75th percentile of valuations
-p75 = arrayfun(@(z) cell2mat(cellfun(@(x) mean(x < z), ui, 'UniformOutput', ...
-                        false)), prctile(FU, 75)', 'UniformOutput', false);
-p75 = cell2mat(p75)
-
-%}
 %% Section 2, Question 1
 % ----------------------------------------------------------------------------

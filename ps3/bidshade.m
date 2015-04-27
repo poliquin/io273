@@ -15,7 +15,6 @@ function [V] = bidshade(bids, maxopp, bwidth)
     kern = @(x) (1/sqrt(2*pi)) .* exp(-0.5 .* x.^2);
 
     for t = 1:T  % each auction-bid combo is estimated separately
-        %kern = makedist('Normal', 'mu', bids(t) / bwidth, 'sigma', 1);
         % find auctions in which max opponent bid is less than player i bid
         mask = maxopp < bids(t);
         mbid = bids(mask);
