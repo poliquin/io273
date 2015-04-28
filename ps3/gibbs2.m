@@ -170,15 +170,19 @@ function beta = drawbeta(y_star, X, betabar, sigma, A,P)
         sig11 = sigma(1:2,1:2); sig22 = sigma(3:4,3:4);
         sig12 = sigma(1:2,3:4); sig21 = sigma(3:4,1:2);
         condsigma = sig22-sig21*(sig11\sig12);
+        eps = y_star-P-betabar(1)*X(:,1);
 %        T=[0,1,0,1;1,0,1,0];
 %        condsigma = T*sigma*T';
 %        condsigma = sig22;
         G = condsigma\eye(2); % G is sigma inverted
         C = chol(G,'lower');
-        Xstar = kron(eye(N),C')*X(:,2);
-        ystar = kron(eye(N),C')*P;
+        Xstar = kron(eye(N),C')*X(:,2); 
+        for ind=1:N
+            ystar((ind-1)*K+1:ind*K) = C'*(P((ind-1)*K+1:ind*K)-sig21*(sig11\eps((ind-1)*K+1:ind*K)));
+        end
+        %ystar = kron(eye(N),C')*(P);
         sig = inv(Xstar'*Xstar + A_tiny);
-        betahat = sig * (Xstar'*ystar+A_tiny*gammabar);
+        betahat = sig * (Xstar'*ystar'+A_tiny*gammabar);
         % Draw random normal
         beta(2,1) = mvnrnd(betahat,sig)';
          
@@ -190,16 +194,18 @@ function beta = drawbeta(y_star, X, betabar, sigma, A,P)
 %        condsigma = sig11 + beta(2,1)*sig12 + beta(2,1)*sig21 + beta(2,1)*beta(2,1)*sig22;
 %        condsigma = sig11;
         % Need to draw eta
-%        eta = P-beta(2,1)*X(:,2);
+        eta = P-beta(2,1)*X(:,2);
 %         tempgam = (X(:,2)'*X(:,2))\(X(:,2)'*P);
 %         eta= P - tempgam*X(:,2); % eta = P-Zgamma (2N by 1)
         condsigma = sig11-sig12*(sig22\sig21);
         G = condsigma\eye(2); % G is sigma inverted
         C = chol(G,'lower');
-        Xstar = kron(eye(N),C')*X(:,1);
-        ystar = kron(eye(N),C')*(y_star-P);
+        Xstar = kron(eye(N),C')*X(:,1); 
+        for ind=1:N
+            ystar((ind-1)*K+1:ind*K) = C'*(y_star((ind-1)*K+1:ind*K)-P((ind-1)*K+1:ind*K)-sig12*(sig22\eta((ind-1)*K+1:ind*K)));
+        end
         sig = inv(Xstar'*Xstar + A_tiny);
-        betahat = sig * (Xstar'*ystar+A_tiny*betabar(1));
+        betahat = sig * (Xstar'*ystar'+A_tiny*betabar(1));
         % Draw random normal
         beta(1,1) = mvnrnd(betahat,sig)';
     else
