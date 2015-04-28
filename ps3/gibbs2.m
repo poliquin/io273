@@ -169,10 +169,10 @@ function beta = drawbeta(y_star, X, betabar, sigma, A,P)
         gammabar = betabar(2);
         sig11 = sigma(1:2,1:2); sig22 = sigma(3:4,3:4);
         sig12 = sigma(1:2,3:4); sig21 = sigma(3:4,1:2);
-%        condsigma = sig22-sig21*(sig11\sig12);
+        condsigma = sig22-sig21*(sig11\sig12);
 %        T=[0,1,0,1;1,0,1,0];
 %        condsigma = T*sigma*T';
-        condsigma = sig22;
+%        condsigma = sig22;
         G = condsigma\eye(2); % G is sigma inverted
         C = chol(G,'lower');
         Xstar = kron(eye(N),C')*X(:,2);
@@ -181,17 +181,23 @@ function beta = drawbeta(y_star, X, betabar, sigma, A,P)
         betahat = sig * (Xstar'*ystar+A_tiny*gammabar);
         % Draw random normal
         beta(2,1) = mvnrnd(betahat,sig)';
-        
+         
+       
         % Step 2: Draw beta | y_star
 %        T=[1,0,1,0;0,1,0,1];
 %        condsigma = T*sigma*T';
 %        condsigma = sig11-sig12*(sig22\sig21);
-        condsigma = sig11 + sig12 + sig21 + sig22;
+%        condsigma = sig11 + beta(2,1)*sig12 + beta(2,1)*sig21 + beta(2,1)*beta(2,1)*sig22;
 %        condsigma = sig11;
+        % Need to draw eta
+%        eta = P-beta(2,1)*X(:,2);
+%         tempgam = (X(:,2)'*X(:,2))\(X(:,2)'*P);
+%         eta= P - tempgam*X(:,2); % eta = P-Zgamma (2N by 1)
+        condsigma = sig11-sig12*(sig22\sig21);
         G = condsigma\eye(2); % G is sigma inverted
         C = chol(G,'lower');
         Xstar = kron(eye(N),C')*X(:,1);
-        ystar = kron(eye(N),C')*(y_star-X(:,2)*beta(2,1));
+        ystar = kron(eye(N),C')*(y_star-P);
         sig = inv(Xstar'*Xstar + A_tiny);
         betahat = sig * (Xstar'*ystar+A_tiny*betabar(1));
         % Draw random normal
