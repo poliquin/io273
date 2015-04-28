@@ -113,3 +113,4 @@ saveas(f, 'figs/asymmetric_values.pdf');
 
 %% Section 2, Question 1
 % ----------------------------------------------------------------------------
+run('sec2.m')

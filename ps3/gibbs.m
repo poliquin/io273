@@ -48,7 +48,7 @@ function [ALPHA, BETA, SIGMA, ystr] = gibbs(Y,X,runs,initbeta,initsigma)
 %         end
         [y_star] = drawystar(X,Y,betaold,sigmaold);
 %         ystr(:,:,i)=y_star;
-        betanew = drawbeta(y_star, X, betabar, sigmaold,A);
+        betanew = drawbeta(y_star, X, betabar, sigmaold,A,P);
         sigmanew = drawsigma(Y,X, betanew, y_star, V, NU);
         
         % Save results
@@ -123,7 +123,14 @@ function [y_star] = drawystar(X, Y, beta, sigma)
             end
             
             % Draw from posterior using simple acceptance algorithm
-            ystar_new = mvnrnd(mu,tau)';
+            try
+                ystar_new = mvnrnd(mu,tau)';
+            catch
+                warning('Sigma apparently not positive semi-definite; Using t(C)*C instead.')
+                [foo, bar] = chol(tau);
+                tau = foo' * foo;
+                ystar_new = mvnrnd(mu,tau)';
+            end
             Ay = weight * ystar_new;
             Ay(Ay<0)=0;
             Ay=all(Ay);
@@ -149,7 +156,7 @@ function [y_star] = drawystar(X, Y, beta, sigma)
     end
 end
 
-function beta = drawbeta(y_star, X, betabar, sigma, A)
+function beta = drawbeta(y_star, X, betabar, sigma, A,P)
     % Draws beta from posterior Normal distribution centered at 
     % INPUTS
     %   y_star = N*K by 1 matrix of Latent variables
@@ -161,26 +168,71 @@ function beta = drawbeta(y_star, X, betabar, sigma, A)
     % OUTPUTS
     %   beta = K by 1 posterior draw of beta
     % Transform variables by multipyling by C and stack
+    A_tiny=0.01;
     global K; global N; global sigsize;
     if sigsize ==4
-        % Change variance matrix to correct dimensions.
-        % Is this right??
-        T=[1,0,1,0;0,1,0,1];
-        sigma = T*sigma*T';
-%         % Or is this right??
-%         sig11 = sigma(1:2,1:2); sig22=sigma(3:4,3:4);
-%         sig12 = sigma(1:2,3:4); sig21 = sigma(3:4,1:2);
-%         sigma = sig11-sig12*(sig22\sig21);
+        % Use a two-step estimator
+        % Step 1: Draw gamma in front of Z | p_i
+        gammabar = betabar(2);
+        sig11 = sigma(1:2,1:2); sig22 = sigma(3:4,3:4);
+        sig12 = sigma(1:2,3:4); sig21 = sigma(3:4,1:2);
+        condsigma = sig22-sig21*(sig11\sig12);
+        %
+        % Beta bar here?
+        %
+        eps = y_star-P-betabar(1)*X(:,1);
+%        T=[0,1,0,1;1,0,1,0];
+%        condsigma = T*sigma*T';
+%        condsigma = sig22;
+        G = condsigma\eye(2); % G is sigma inverted
+        C = chol(G,'lower');
+        Xstar = kron(eye(N),C')*X(:,2); 
+        for ind=1:N
+            ystar((ind-1)*K+1:ind*K) = C'*(P((ind-1)*K+1:ind*K)-sig21*(sig11\eps((ind-1)*K+1:ind*K)));
+        end
+        %ystar = kron(eye(N),C')*(P);
+        sig = (Xstar'*Xstar + A_tiny)\1;
+        betahat = sig * (Xstar'*ystar'+A_tiny*gammabar);
+        % Draw random normal
+        beta(2,1) = mvnrnd(betahat,sig)';
+        
+        % Step 2: Draw beta | y_star
+%        T=[1,0,1,0;0,1,0,1];
+%        condsigma = T*sigma*T';
+%        condsigma = sig11-sig12*(sig22\sig21);
+%        condsigma = sig11 + beta(2,1)*sig12 + beta(2,1)*sig21 + beta(2,1)*beta(2,1)*sig22;
+%        condsigma = sig11;
+        % Need to draw eta
+        eta = P-beta(2,1)*X(:,2);
+%         tempgam = (X(:,2)'*X(:,2))\(X(:,2)'*P);
+%         eta= P - tempgam*X(:,2); % eta = P-Zgamma (2N by 1)
+        condsigma = sig11-sig12*(sig22\sig21); % of epsilon
+        G = condsigma\eye(2); % G is sigma inverted
+        C = chol(G,'lower');
+        Xstar = kron(eye(N),C')*X(:,1); 
+        for ind=1:N
+            %
+            % Check if this is right
+            % David's version
+            ystar((ind-1)*K+1:ind*K) = C'*(y_star((ind-1)*K+1:ind*K)-P((ind-1)*K+1:ind*K)-sig12*(sig22\eta((ind-1)*K+1:ind*K)));
+            % New version?
+%             ystar((ind-1)*K+1:ind*K) = C'*(y_star((ind-1)*K+1:ind*K)-P((ind-1)*K+1:ind*K)-sig21*(sig11\eps((ind-1)*K+1:ind*K)));
+        end
+        sig = (Xstar'*Xstar + A_tiny)\1;
+        betahat = sig * (Xstar'*ystar'+A_tiny*betabar(1));
+        % Draw random normal
+        beta(1,1) = mvnrnd(betahat,sig)';
+    else
+        G = sigma\eye(2); % G is sigma inverted
+        C = chol(G,'lower');
+        Xstar = kron(eye(N),C')*X;
+        ystar = kron(eye(N),C')*y_star;
+        sig = (Xstar'*Xstar + A)\eye(K);
+        betahat = sig * (Xstar'*ystar+A*betabar);
+
+        % Draw random normal
+        beta = mvnrnd(betahat,sig)';
     end
-    G = sigma\eye(2); % G is sigma inverted
-    C = chol(G,'lower');
-    Xstar = kron(eye(N),C')*X;
-    ystar = kron(eye(N),C')*y_star;
-    sig = (Xstar'*Xstar + A)\eye(K);
-    betahat = sig * (Xstar'*ystar+A*betabar);
-    
-    % Draw random normal
-    beta = mvnrnd(betahat,sig)';
 end
 
 function sigma = drawsigma(Y,X,b,ystar,V,NU)
