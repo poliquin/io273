@@ -4,6 +4,7 @@ rng(8675309);
 dir = mfilename('fullpath');
 cd(dir(1:end-4));
 
+%{
 %% Simulate dataset
 N=100;  K=2; SIGMA=[1,1;1,2]; ALPHA=1; BETA=1;
 [Y, X, P,As] = sim_dataset(N, K, SIGMA, ALPHA, BETA);
@@ -77,7 +78,7 @@ for ind = 1:inits
     disp(' ')
 end
 %% Graphs
-
+%}
 
 %% Part 2
 clear all
@@ -96,6 +97,8 @@ disp(' ')
 y2_in = reshape(y2',[],1);
 x2_in = reshape(x2',[],1);
 p2_in = reshape(p2',[],1);
+
+%{
 %% Part 2-1
 inits = 3; runs =10000;
 beta1=zeros(runs+1,inits); alpha1=zeros(runs+1,inits);
@@ -135,35 +138,37 @@ end
 for ind = 1:inits
     disp(fprintf('Mean and 95%% confidence interval for simulated coefficents, %i of %i',ind,inits))
     disp(table(...
-        num2str([mean(alpha(1000:end,ind));a_min(ind);a_max(ind)], '%3.3f &'), ...
-        num2str([mean(beta(1000:end,ind));b_min(ind);b_max(ind)], '%3.3f &'), ...
-        num2str([mean(sigma(1,2,1000:end,ind));s12_min(ind);s12_max(ind)], '%3.3f &'), ...
-        num2str([mean(sigma(2,2,1000:end,ind));s22_min(ind);s22_max(ind)], '%3.3f \\\\'), ...
+        num2str([mean(alpha1(1000:end,ind));a_min(ind);a_max(ind)], '%3.3f &'), ...
+        num2str([mean(beta1(1000:end,ind));b_min(ind);b_max(ind)], '%3.3f &'), ...
+        num2str([mean(sigma1(1,2,1000:end,ind));s12_min(ind);s12_max(ind)], '%3.3f &'), ...
+        num2str([mean(sigma1(2,2,1000:end,ind));s22_min(ind);s22_max(ind)], '%3.3f \\\\'), ...
         'VariableNames', {'Alpha' 'Beta' 's12' 's22'}, ...
         'RowNames', {'Mean &' 'lower 95%% &' 'upper 95%%'}))
     disp(' ')
 end
+%}
+
 %% Part 2-2
-% runs = 10000; inits=3;
-% beta2=zeros(runs+1,inits); gamm2=zeros(runs+1,inits);
-% sigma2=zeros(4,4,runs+1,inits);
-% % Get dataset into desired form
-% inputX = [reshape(x2',[],1),reshape(z2',[],1)];
-% inputY = [y2, p2];
-% for ind = 1:inits
-%     initsig = zeros(4,4,inits);
-%     init(ind,:) = mvnrnd([1,1],100*eye(2)); initsig(:,:,ind)= wishrnd(10*eye(4),100);
-%     printsig = initsig(:,:,ind)/initsig(1,1,ind);
-%     fprintf('Initial values: [beta, gamma] =\n %3.3f & %3.3f \\\\ \n',init(ind,1),init(ind,2))
-%     [g2,b2,s2,ystr]=gibbs(inputY,inputX,runs,init(ind,:),initsig(:,:,ind));
-%     scale2 = squeeze(s2(1,1,:));
-%     beta2(:,ind) = b2./sqrt(scale2);
-%     gamm2(:,ind) = g2./sqrt(scale2);
-%     sigma2(:,ind) = s2./repmat(s2(1,1,:),4);
-% end
-% mean(b2(1000:end))
-% mean(g2(1000:end))
-% mean(s2(:,:,1000:end),3)
+
+beta2=zeros(runs+1,inits); gamm2=zeros(runs+1,inits);
+sigma2=zeros(4,4,runs+1,inits);
+% Get dataset into desired form
+inputX = [reshape(x2',[],1),reshape(z2',[],1)];
+inputY = [y2, p2];
+
+for ind = 1:inits
+     initsig = zeros(4,4,inits);
+     init(ind,:) = mvnrnd([1,1],100*eye(2)); initsig(:,:,ind)= wishrnd(10*eye(4),100);
+     printsig = initsig(:,:,ind)/initsig(1,1,ind);
+     fprintf('Initial values: [beta, gamma] =\n %3.3f & %3.3f \\\\ \n',init(ind,1),init(ind,2))
+     scale2 = squeeze(s2(1,1,:));
+     beta2(:,ind) = b2./sqrt(scale2);
+     gamm2(:,ind) = g2./sqrt(scale2);
+     sigma2(:,:,:,ind) = s2./repmat(s2(1,1,:),4);
+ end
+ mean(beta2(1000:end))
+ mean(gamm2(1000:end))
+ mean(sigma2(:,:,1000:end),3)
 
 
 % GAMMA = 
