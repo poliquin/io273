@@ -92,13 +92,24 @@ cdfvalues
 % Symmetric, independent, private values
 v = cell2mat(arrayfun(@(x) symmetry(x, fpa, 12.8), fpa(:), ...
                       'UniformOutput', false));
-pv = arrayfun(@(x) mean(v <= x), 0:2:150, 'UniformOutput', false);
+pv = arrayfun(@(x) mean(v <= x), 0:2:250, 'UniformOutput', false);
 f = figure('PaperPosition', [.1, .2, 6.2, 3.5], 'PaperSize', [6.4, 4]);
-p1 = plot(0:2:150, cell2mat(pv))
+p1 = plot(0:2:250, cell2mat(pv))
 xlabel('Value')
 ylabel('')
-title('CDF of Symmetric Value Distribution')
+title('CDF Assuming Symmetric Independent Value Distribution')
 saveas(f, 'figs/symmetric_values.pdf');
+
+% Dependent asymmetric values
+ui = mat2cell(FU, T, ones(1, M));
+cdfdep = arrayfun(@(z) cell2mat(cellfun(@(x) mean(x < z), ui, 'UniformOutput', ...
+                             false)), (0:2:250)', 'UniformOutput', false);
+cdfdep = cell2mat(cdfdep);
+p2 = plot(0:2:250, cdfdep)
+xlabel('Value')
+ylabel('')
+title('Marginal CDF of Bidders')
+saveas(f, 'figs/asymmetric_values.pdf');
 
 %% Section 2, Question 1
 % ----------------------------------------------------------------------------

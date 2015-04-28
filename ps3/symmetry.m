@@ -18,5 +18,5 @@ function [V] = symmetry(b, bids, bwidth)
     G = mean(bidstack <= b);
     g = mean(cell2mat(arrayfun(@(x) kern((b - x) ./ bwidth), bidstack, ...
                                'UniformOutput', false))) ./ bwidth;
-    V = b + G / (N-1)*g;
+    V = b + G / ((N-1)*g);
 end
