@@ -27,18 +27,18 @@ saveas(f, 'figs/ascending_values.pdf');
 rho = -1/600*size(X,1);
 % Assume first price English auction
 % upper bound is min of estimated values of the nth order statistic
-y = orderstat_n(X,20,120,1,1);
+y = orderstat_n(X,20,160,1,0);
 numerator = y.*exp(y*rho);
 denominator = sum(exp(y*rho),2);
 ub = sum(numerator./repmat(denominator,1,3), 2);
 
 % lower bound is maximum of estimated values of the n-1th order statistic
-y = orderstat(X,20,120,1,1);
+y = orderstat(X,20,160,1,1);
 numerator = y.*exp(y*-rho);
 denominator = sum(exp(y*-rho),2);
 lb = sum(numerator./repmat(denominator,1,3), 2);
 
-x = [20:1:120]';
+x = [20:1:160]';
 f = figure('PaperPosition', [.1, .2, 6.2, 3.5], 'PaperSize', [6.4, 4]);
 ax1 = axes('Parent', f, 'FontSize', 11);
 area(x, ub, 'FaceColor', [0.5 0.9 0.6])
