@@ -21,7 +21,7 @@ disp(' ')
 X = reshape(X',[],1);
 P = reshape(P',[],1);
 %% Run gibbs using three different starting points and 10000 runs
-runs = 5000; inits = 3;
+runs = 10000; inits = 3;
 init = zeros(inits,2); initsig = zeros(2,2,inits);
 alpha = zeros(runs+1,inits); beta = zeros(runs+1,inits);
 sigma = zeros(2,2,runs+1,inits);
@@ -77,10 +77,31 @@ for ind = 1:inits
     disp(' ')
 end
 %% Graphs
-
-
+h=figure;
+plot(alpha(:,:));
+title('1(b) Trace plot - alpha');
+xlabel('Iterations');
+ylabel('beta');
+saveas(h,'1b-alpha','jpg');
+h=figure;
+plot(beta(:,:));
+title('1(b) Trace plot - beta');
+xlabel('Iterations');
+ylabel('beta');
+saveas(h,'1b-beta','jpg');
+h=figure;
+plot(squeeze(sigma(1,2,:,:)));
+title('1(b) Trace plot - sig12');
+xlabel('Iterations');
+ylabel('beta');
+saveas(h,'1b-sig12','jpg');
+h=figure;
+plot(squeeze(sigma(2,2,:,:)));
+title('1(b) Trace plot - sig22');
+xlabel('Iterations');
+ylabel('beta');
+saveas(h,'1b-sig22','jpg');
 %% Part 2
-clear all
 [y2, x2, p2, z2] = sim_dataset2(100,2,1,1);
 disp('Mean and std. dev. for simulated data (Part 2)')
 disp(table(num2str([mean(y2);std(y2)], '%3.3f &'), ...
@@ -96,6 +117,7 @@ disp(' ')
 y2_in = reshape(y2',[],1);
 x2_in = reshape(x2',[],1);
 p2_in = reshape(p2',[],1);
+
 %% Part 2-1
 inits = 3; runs =10000;
 beta1=zeros(runs+1,inits); alpha1=zeros(runs+1,inits);
@@ -135,14 +157,39 @@ end
 for ind = 1:inits
     disp(fprintf('Mean and 95%% confidence interval for simulated coefficents, %i of %i',ind,inits))
     disp(table(...
-        num2str([mean(alpha(1000:end,ind));a_min(ind);a_max(ind)], '%3.3f &'), ...
-        num2str([mean(beta(1000:end,ind));b_min(ind);b_max(ind)], '%3.3f &'), ...
-        num2str([mean(sigma(1,2,1000:end,ind));s12_min(ind);s12_max(ind)], '%3.3f &'), ...
-        num2str([mean(sigma(2,2,1000:end,ind));s22_min(ind);s22_max(ind)], '%3.3f \\\\'), ...
+        num2str([mean(alpha1(1000:end,ind));a_min(ind);a_max(ind)], '%3.3f &'), ...
+        num2str([mean(beta1(1000:end,ind));b_min(ind);b_max(ind)], '%3.3f &'), ...
+        num2str([mean(sigma1(1,2,1000:end,ind));s12_min(ind);s12_max(ind)], '%3.3f &'), ...
+        num2str([mean(sigma1(2,2,1000:end,ind));s22_min(ind);s22_max(ind)], '%3.3f \\\\'), ...
         'VariableNames', {'Alpha' 'Beta' 's12' 's22'}, ...
         'RowNames', {'Mean &' 'lower 95%% &' 'upper 95%%'}))
     disp(' ')
 end
+%%
+h=figure;
+plot(alpha1(:,:));
+title('2(b) Trace plot - alpha');
+xlabel('Iterations');
+ylabel('beta');
+saveas(h,'2b-alpha','jpg');
+h=figure;
+plot(beta1(:,:));
+title('2(b) Trace plot - beta');
+xlabel('Iterations');
+ylabel('beta');
+saveas(h,'2b-beta','jpg');
+h=figure;
+plot(squeeze(sigma1(1,2,:,:)));
+title('2(b) Trace plot - sig12');
+xlabel('Iterations');
+ylabel('beta');
+saveas(h,'2b-sig12','jpg');
+h=figure;
+plot(squeeze(sigma1(2,2,:,:)));
+title('2(b) Trace plot - sig22');
+xlabel('Iterations');
+ylabel('beta');
+saveas(h,'2b-sig22','jpg');
 %% Part 2-2
 % runs = 10000; inits=3;
 % beta2=zeros(runs+1,inits); gamm2=zeros(runs+1,inits);
