@@ -21,7 +21,7 @@ disp(' ')
 X = reshape(X',[],1);
 P = reshape(P',[],1);
 %% Run gibbs using three different starting points and 10000 runs
-runs = 10000; inits = 3;
+runs = 5000; inits = 3;
 init = zeros(inits,2); initsig = zeros(2,2,inits);
 alpha = zeros(runs+1,inits); beta = zeros(runs+1,inits);
 sigma = zeros(2,2,runs+1,inits);
@@ -47,15 +47,15 @@ a_min=zeros(inits,1); a_max=zeros(inits,1); b_min=zeros(inits,1); b_max=zeros(in
 s12_min=zeros(inits,1);s21_min=zeros(inits,1);s22_min=zeros(inits,1);
 s12_max=zeros(inits,1);s21_max=zeros(inits,1);s22_max=zeros(inits,1);
 for ind = 1:inits
-    alpha_s = sort(alpha(1000:end,ind));
+    alpha_s = sort(alpha(3000:end,ind));
     a_min(ind) = min(alpha_s(cut:end-cut));
     a_max(ind) = max(alpha_s(cut:end-cut));
-    beta_s = sort(beta(1000:end,ind));
+    beta_s = sort(beta(3000:end,ind));
     b_min(ind) = min(beta_s(cut:end-cut));
     b_max(ind) = max(beta_s(cut:end-cut));
-    s12 = sort(sigma(1,2,1000:end,ind));
-    s21 = sort(sigma(2,1,1000:end,ind));
-    s22 = sort(sigma(2,2,1000:end,ind));
+    s12 = sort(sigma(1,2,3000:end,ind));
+    s21 = sort(sigma(2,1,3000:end,ind));
+    s22 = sort(sigma(2,2,3000:end,ind));
     s12_min(ind) = min(squeeze(s12(cut:end-cut)));
     s21_min(ind) = min(squeeze(s21(cut:end-cut)));
     s22_min(ind) = min(squeeze(s22(cut:end-cut)));
@@ -68,10 +68,10 @@ end
 for ind = 1:inits
     disp(fprintf('Mean and 95%% confidence interval for simulated coefficents, %i of %i',ind,inits))
     disp(table(...
-        num2str([mean(alpha(1000:end,ind));a_min(ind);a_max(ind)], '%3.3f &'), ...
-        num2str([mean(beta(1000:end,ind));b_min(ind);b_max(ind)], '%3.3f &'), ...
-        num2str([mean(sigma(1,2,1000:end,ind));s12_min(ind);s12_max(ind)], '%3.3f &'), ...
-        num2str([mean(sigma(2,2,1000:end,ind));s22_min(ind);s22_max(ind)], '%3.3f \\\\'), ...
+        num2str([mean(alpha(3000:end,ind));a_min(ind);a_max(ind)], '%3.3f &'), ...
+        num2str([mean(beta(3000:end,ind));b_min(ind);b_max(ind)], '%3.3f &'), ...
+        num2str([mean(sigma(1,2,3000:end,ind));s12_min(ind);s12_max(ind)], '%3.3f &'), ...
+        num2str([mean(sigma(2,2,3000:end,ind));s22_min(ind);s22_max(ind)], '%3.3f \\\\'), ...
         'VariableNames', {'Alpha' 'Beta' 's12' 's22'}, ...
         'RowNames', {'Mean &' 'lower 95%% &' 'upper 95%%'}))
     disp(' ')

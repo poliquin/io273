@@ -171,7 +171,6 @@ function beta = drawbeta(y_star, X, betabar, sigma, A)
 %         sig11 = sigma(1:2,1:2); sig22=sigma(3:4,3:4);
 %         sig12 = sigma(1:2,3:4); sig21 = sigma(3:4,1:2);
 %         sigma = sig11-sig12*(sig22\sig21);
-%         y_star=y_star-etahat;
     end
     G = sigma\eye(2); % G is sigma inverted
     C = chol(G,'lower');
