@@ -4,6 +4,7 @@ rng(8675309);
 dir = mfilename('fullpath');
 cd(dir(1:end-4));
 
+%{
 %% Simulate dataset
 N=100;  K=2; SIGMA=[1,1;1,2]; ALPHA=1; BETA=1;
 [Y, X, P,As] = sim_dataset(N, K, SIGMA, ALPHA, BETA);
@@ -101,6 +102,7 @@ title('1(b) Trace plot - sig22');
 xlabel('Iterations');
 ylabel('beta');
 saveas(h,'1b-sig22','jpg');
+%}
 %% Part 2
 [y2, x2, p2, z2] = sim_dataset2(100,2,1,1);
 disp('Mean and std. dev. for simulated data (Part 2)')
@@ -118,6 +120,7 @@ y2_in = reshape(y2',[],1);
 x2_in = reshape(x2',[],1);
 p2_in = reshape(p2',[],1);
 
+%{
 %% Part 2-1
 inits = 3; runs =10000;
 beta1=zeros(runs+1,inits); alpha1=zeros(runs+1,inits);
@@ -190,27 +193,28 @@ title('2(b) Trace plot - sig22');
 xlabel('Iterations');
 ylabel('beta');
 saveas(h,'2b-sig22','jpg');
+%}
 %% Part 2-2
-% runs = 10000; inits=3;
-% beta2=zeros(runs+1,inits); gamm2=zeros(runs+1,inits);
-% sigma2=zeros(4,4,runs+1,inits);
-% % Get dataset into desired form
-% inputX = [reshape(x2',[],1),reshape(z2',[],1)];
-% inputY = [y2, p2];
-% for ind = 1:inits
-%     initsig = zeros(4,4,inits);
-%     init(ind,:) = mvnrnd([1,1],100*eye(2)); initsig(:,:,ind)= wishrnd(10*eye(4),100);
-%     printsig = initsig(:,:,ind)/initsig(1,1,ind);
-%     fprintf('Initial values: [beta, gamma] =\n %3.3f & %3.3f \\\\ \n',init(ind,1),init(ind,2))
-%     [g2,b2,s2,ystr]=gibbs(inputY,inputX,runs,init(ind,:),initsig(:,:,ind));
-%     scale2 = squeeze(s2(1,1,:));
-%     beta2(:,ind) = b2./sqrt(scale2);
-%     gamm2(:,ind) = g2./sqrt(scale2);
-%     sigma2(:,ind) = s2./repmat(s2(1,1,:),4);
-% end
-% mean(b2(1000:end))
-% mean(g2(1000:end))
-% mean(s2(:,:,1000:end),3)
+
+beta2=zeros(runs+1,inits); gamm2=zeros(runs+1,inits);
+sigma2=zeros(4,4,runs+1,inits);
+% Get dataset into desired form
+inputX = [reshape(x2',[],1),reshape(z2',[],1)];
+inputY = [y2, p2];
+
+for ind = 1:inits
+     initsig = zeros(4,4,inits);
+     init(ind,:) = mvnrnd([1,1],100*eye(2)); initsig(:,:,ind)= wishrnd(10*eye(4),100);
+     printsig = initsig(:,:,ind)/initsig(1,1,ind);
+     fprintf('Initial values: [beta, gamma] =\n %3.3f & %3.3f \\\\ \n',init(ind,1),init(ind,2))
+     scale2 = squeeze(s2(1,1,:));
+     beta2(:,ind) = b2./sqrt(scale2);
+     gamm2(:,ind) = g2./sqrt(scale2);
+     sigma2(:,:,:,ind) = s2./repmat(s2(1,1,:),4);
+ end
+ mean(beta2(1000:end))
+ mean(gamm2(1000:end))
+ mean(sigma2(:,:,1000:end),3)
 
 
 % GAMMA = 
