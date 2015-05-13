@@ -13,8 +13,8 @@ for i=1:size(data,2)
     for j=1:size(data,1)
         [~,choice] = max([-theta1*data(j,i)+epsilon(j,1,i)+beta*EV(data(j,i)+1,1), ...
             -RC-theta1*0+epsilon(j,2,i)+beta*EV(data(j,i)+1,2)]);
-        if j<1000 % avoid the boundary error
         if choice==1
+            if j<1000 % avoid the boundary error
             r = rand;
             if r<theta30
                 data(j+1,i)=data(j,i);
@@ -23,10 +23,12 @@ for i=1:size(data,2)
             else
                 data(j+1,i) = data(j,i)+2;
             end    
+            end
         else
+            if j<1000 % avoid the boundary error
             data(j+1,i)=0;
+            end
             it(j,i)=1;
-        end
         end
     end
 end
