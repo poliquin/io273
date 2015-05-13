@@ -10,18 +10,50 @@ cd(dir(1:end-4));
 
 %% Section 2, Question 3
 % ----------------------------------------------------------------------------
+% Define true parameters
 beta    = .99;
 RC      = 10;
 theta1  = .05;
 theta30 = .3;
 theta31 = .5;
 theta32 = .2;
-
+% Calculate expected continuation value
 EV = ev(beta, RC, theta1, theta30, theta31, theta32);
+
+%% Section 2, Question 4
+% Plot continuation value
+EVplot = EV(1:11,:);
+EVplotx = linspace(0,10,11);
+f = figure('PaperPosition', [.1, .2, 6.2, 3.5], 'PaperSize', [6.4, 4]);
+plot(EVplotx,EVplot(:,1)','--',EVplotx,EVplot(:,2),':')
+title('Plot of Choice-specific Value Functions')
+xlabel('x')
+ylabel('EV')
+legend('i = 0', 'i = 1')
+saveas(f, 'figs/EV.pdf');
+
 
 %% Section 2, Question 5
 % ----------------------------------------------------------------------------
+% Simulate data
 [xt, it] = sim_data(EV,beta, RC, theta1, theta30, theta31);
+% Generate summary statistics and plots
+xtit = zeros(10000,2);
+count = 1;
+for i=1:size(xt,1)
+    for j=1:size(xt,2)
+        xtit(count, 1) = xt(i,j);
+        xtit(count, 2) = it(i,j);
+        count = count + 1;
+    end
+end
+histogram(xtit(xtit(:,2)==1,1))
+title('Histogram of x when i=0')
+xlabel('x')
+ylabel('freq')
+saveas(f, 'figs/histx.pdf');
+sprintf('2.5\nMin = %f, \n25th Pctile = %f, \nMean = %f, \nMedian = %f, \n75th Pctile = %f, \nMax=%f',...
+    min(xtit(xtit(:,2)==1,1)), prctile(xtit(xtit(:,2)==1,1),25),mean(xtit(xtit(:,2)==1,1)),median(xtit(xtit(:,2)==1,1)), prctile(xtit(xtit(:,2)==1,1),75), max(xtit(xtit(:,2)==1,1)))
 
 
 %% Section 3, Question 1

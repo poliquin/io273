@@ -1,7 +1,7 @@
 function loglike = rust(theta1, theta31, theta32, RC, beta,xt,it)
 % compute the 0 transition probability
 theta30 = 1 - theta31 - theta32;
-% compute EV function
+% compute EV function (fixed point iteration)
 evhat = ev(.99, 10, theta1, theta30, theta31, theta32);
 % setup empty matrix
 phat = zeros(size(xt,1),size(xt,2));
