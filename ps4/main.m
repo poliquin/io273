@@ -68,3 +68,16 @@ se = sqrt(diag(inv(hess)));
 sprintf('3.1\ntheta1 = %f (%f), \ntheta31 = %f (%f), \ntheta32 = %f(%f)', theta1hat, se,theta31hat,theta31hatse, theta32hat, theta32hatse)
 
 
+%% Section 3, Question 3
+% ----------------------------------------------------------------------------
+% columnize choices and transitions
+renew = reshape(it(1:999, :), [], 1);
+trans = reshape(diff(xt), [], 1);
+% estimate transition probabilities
+theta3 = tabulate(trans(renew == 0));
+theta3 = theta3(:, 3);
+
+
+
+
+
