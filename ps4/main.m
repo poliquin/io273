@@ -129,22 +129,20 @@ theta1 = fminsearch(@(t) norm(pdiff - vdiff(t)), unifrnd(0, 1))
 %% Section 3, Question 4
 % ----------------------------------------------------------------------------
 % Simulate replacement decisions for new engines
-ERNew=zeros(30,1);
 
+ERNew=zeros(30,1);
 for i=1:30
     EVNew = ev(beta, i, .02, 1-theta31hat-theta32hat, theta31hat, theta32hat);
-    [~,it]=sim_data(EVNew,beta, i, .02, 1-theta31hat-theta32hat, theta31hat);
-    it = it(900:1000,:);
-    ERNew(i) = 1/100*sum(sum(it));
+    pi=fppi(EVNew,beta, i, .02, 1-theta31hat-theta32hat, theta31hat, theta32hat);
+    ERNew(i) = 100*sum(pi(:,2));
 end
 
 % Simulate replacement decisions for old engines. 
 EROld=zeros(30,1);
 for i=1:30
     EVOld = ev(beta, i, theta1hat, 1-theta31hat-theta32hat, theta31hat, theta32hat);
-    [~,it]=sim_data(EVOld,beta, i, theta1hat, 1-theta31hat-theta32hat, theta31hat);
-    it = it(900:1000,:);
-    EROld(i) = 1/100*sum(sum(it));
+    pi=fppi(EVOld,beta, i, theta1hat, 1-theta31hat-theta32hat, theta31hat, theta32hat);
+    EROld(i) = 100*sum(pi(:,2));
 end
 
 % Define xaxis
