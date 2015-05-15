@@ -101,12 +101,29 @@ EVOld(1,1)
 renew = reshape(it(1:999, :), [], 1);
 trans = reshape(diff(xt), [], 1);
 
-% estimate transition probabilities
+% estimate transition probabilities using cases without renewal
 theta3 = tabulate(trans(renew == 0));
-theta3 = theta3(:, 3);
+theta3 = theta3(:, 3) / 100
 
 % estimate conditional choice probabilities
 prob = ccp(xt, it);
+% prob(1) is the probability of replacing when xt = 0, and
+% prob(20) is the probability of replacing when xt = 19, and so on...
+
+x = xt(:);  % stack the observations
+% calculate difference in log probabilities (continue - renew)
+dust = 1e-10;  % ensure probabilities are not exactly zero
+pdiff = log(1 - prob(x + 1) + dust) - log(prob(x + 1) + dust);
+
+% calculate difference in values (continue - renew) at theta1
+cons = -beta*(theta3(1)*log(prob(x + 1) + dust) + ...
+              theta3(2)*log(prob(x + 2) + dust) + ...
+              theta3(3)*log(prob(x + 3) + dust) ...
+             ) + RC + beta*log(prob(1) + dust);
+vdiff = @(theta) cons - (theta * x);
+
+% estimate theta using minimum distance
+theta1 = fminsearch(@(t) norm(pdiff - vdiff(t)), unifrnd(0, 1))
 
 
 %% Section 3, Question 4

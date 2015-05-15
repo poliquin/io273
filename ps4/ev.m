@@ -33,4 +33,3 @@ while diff > TOL % run this loop until diff drops below TOL
 end
 
 v = v(1:201,:);
-        
