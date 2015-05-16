@@ -34,6 +34,7 @@ function [prob] = ccp(xt, it)
     prob(29:end) = sum(choice(states > 28)) / tot;
 
     % bin probs less than or equal to 2
+    i=1;
     while prob(1)==0
         i=i+1;
         tot = sum(counts(counts(:, 1) <= i, 2));
