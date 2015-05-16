@@ -11,9 +11,9 @@ function [prob] = ccp(xt, it)
     choice = it(:);
     counts = tabulate(states);
 
-    prob = zeros(42, 1);
+    prob = zeros(max(max(xt))+4, 1);
 
-    for s=0:42
+    for s=0:(max(max(xt))+3)
         % get number of times we see this state
         tot = counts(counts(:, 1) == s, 2);
         if isempty(tot)  % we never saw the state
@@ -33,4 +33,8 @@ function [prob] = ccp(xt, it)
     tot = sum(counts(counts(:, 1) > 28, 2));
     prob(29:end) = sum(choice(states > 28)) / tot;
 
+    % bin probs less than or equal to 2
+    tot = sum(counts(counts(:, 1) <= 2, 2));
+    prob(1:2) = sum(choice(states <=2)) / tot;
+    
 end

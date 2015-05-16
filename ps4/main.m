@@ -95,7 +95,7 @@ EVOld = ev(beta, 10, theta1hat, 1-theta31hat-theta32hat, theta31hat, theta32hat)
 EVOld(1,1)
 
 
-%% Section 3, Question 3
+%% Section 3, Question 2
 % ----------------------------------------------------------------------------
 % columnize choices and transitions
 renew = reshape(it(1:999, :), [], 1);
@@ -112,14 +112,14 @@ prob = ccp(xt, it);
 
 x = xt(:);  % stack the observations
 % calculate difference in log probabilities (continue - renew)
-dust = 1e-10;  % ensure probabilities are not exactly zero
-pdiff = log(1 - prob(x + 1) + dust) - log(prob(x + 1) + dust);
+pdiff = log(1 - prob(x + 1)) - log(prob(x + 1));
 
 % calculate difference in values (continue - renew) at theta1
 cons = -beta*(theta3(1)*log(prob(x + 1) + dust) + ...
               theta3(2)*log(prob(x + 2) + dust) + ...
               theta3(3)*log(prob(x + 3) + dust) ...
              ) + RC + beta*log(prob(1) + dust);
+     
 vdiff = @(theta) cons - (theta * x);
 
 % estimate theta using minimum distance
