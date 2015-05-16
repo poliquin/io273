@@ -38,3 +38,9 @@ Code for the third problem set requires the `ascending_data.dat` and
 `fpa.dat` files. These should be placed in the `ps3` directory before
 running `main.m`. `ps3` should have a `figs` folder for saving plots.
 
+Problem Set 4
+-------------
+
+Run `main.m` for all solutions. `ps4` should have a `figs` folder for
+saving plots.
+
