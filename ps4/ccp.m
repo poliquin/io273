@@ -1,6 +1,6 @@
 function [prob] = ccp(xt, it)
     % CCP  Estimate conditional choice probabilities.
-    %   Find probability of renewal for each mileage state between 0 and 42.
+    %   Find probability of renewal for each mileage state, apply some binning.
     % Input arguments:
     %   xt = matrix of states (mileage of bus in rows, buses in columns)
     %   it = renewal decisions (0 is continue, 1 is renew, buses in columns)
@@ -10,10 +10,11 @@ function [prob] = ccp(xt, it)
     states = xt(:);
     choice = it(:);
     counts = tabulate(states);
+    N = max(states) + 4;
+    
+    prob = zeros(N, 1);
 
-    prob = zeros(max(max(xt))+4, 1);
-
-    for s=0:(max(max(xt))+3)
+    for s=0:N-1
         % get number of times we see this state
         tot = counts(counts(:, 1) == s, 2);
         if isempty(tot)  % we never saw the state
@@ -33,12 +34,7 @@ function [prob] = ccp(xt, it)
     tot = sum(counts(counts(:, 1) > 28, 2));
     prob(29:end) = sum(choice(states > 28)) / tot;
 
-    % bin probs less than or equal to 2
-    i=1;
-    while prob(1)==0
-        i=i+1;
-        tot = sum(counts(counts(:, 1) <= i, 2));
-        prob(1:i) = sum(choice(states <=i)) / tot;
-    end
-    
+    % bin mileages less than or equal to 2
+    tot = sum(counts(counts(:, 1) <= 2, 2));
+    prob(1:2) = sum(choice(states <= 2)) / tot;
 end
