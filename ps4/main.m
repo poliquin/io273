@@ -3,17 +3,18 @@
 % Do Yoon Kim, Chris Poliquin, David Zhang
 % May 15, 2015
 
-clear all
 rng(8675309);
 dir = mfilename('fullpath');
 cd(dir(1:end-4));
+options = optimset('Display', 'final', 'TolFun', 10e-10, ...
+                   'MaxIter', 1000, 'MaxFunEvals', 1000);
 
 
 %% Section 2, Question 3
 % ----------------------------------------------------------------------------
 % Define true parameters
-beta    = .99;
-RC      = 10;
+beta = .99;
+RC = 10;
 theta1  = .05;
 theta30 = .3;
 theta31 = .5;
@@ -30,7 +31,7 @@ EV = ev(beta, RC, theta1, theta30, theta31, theta32);
 EVplot = EV(1:11,:);
 EVplotx = linspace(0,10,11);
 f = figure('PaperPosition', [.1, .2, 6.2, 3.5], 'PaperSize', [6.4, 4]);
-plot(EVplotx,EVplot(:,1)','--',EVplotx,EVplot(:,2),':')
+plot(EVplotx, EVplot(:,1)', '--', EVplotx, EVplot(:, 2), ':')
 title('Plot of Continuation Values EV')
 xlabel('x')
 ylabel('EV')
@@ -42,26 +43,26 @@ saveas(f, 'figs/EV.pdf');
 % ----------------------------------------------------------------------------
 % Simulate data
 
-[xt, it] = sim_data(EV,beta, RC, theta1, theta30, theta31);
+[xt, it] = sim_data(EV, beta, RC, theta1, theta30, theta31);
 % Generate summary statistics and plots
-xtit = zeros(100000,2);
+xtit = zeros(100000, 2);
 count = 1;
-for i=1:size(xt,1)
-    for j=1:size(xt,2)
-        xtit(count, 1) = xt(i,j);
-        xtit(count, 2) = it(i,j);
+for i=1:size(xt, 1)
+    for j=1:size(xt, 2)
+        xtit(count, 1) = xt(i, j);
+        xtit(count, 2) = it(i, j);
         count = count + 1;
     end
 end
 
 f = figure('PaperPosition', [.1, .2, 6.2, 3.5], 'PaperSize', [6.4, 4]);
-histogram(xtit(xtit(:,2)==1,1))
+histogram(xtit(xtit(:, 2)==1, 1))
 title('Histogram of x when i=0')
 xlabel('x')
 ylabel('freq')
 saveas(f, 'figs/histx.pdf');
 
-for i=1:max(xtit(xtit(:,2)==1,1))
+for i=1:max(xtit(xtit(:, 2)==1,1))
     frac_i(i) = sum(xtit(xtit(:,2)==1 & xtit(:,1)==i,1))/sum(xtit(xtit(:,1)==i,1));
 end
 
@@ -72,25 +73,11 @@ xlabel('x')
 ylabel('Fraction with i=1')
 saveas(f, 'figs/prob.pdf');
 
-sprintf('2.5\nMin = %f, \n25th Pctile = %f, \nMean = %f, \nMedian = %f, \n75th Pctile = %f, \nMax=%f',...
+sprintf('2.5\nMin = %f, \n25th Pctile = %f, \nMean = %f, \nMedian = %f, \n75th Pctile = %f, \nMax = %f',...
     min(xtit(xtit(:,2)==1,1)), prctile(xtit(xtit(:,2)==1,1),25),mean(xtit(xtit(:,2)==1,1)),median(xtit(xtit(:,2)==1,1)), prctile(xtit(xtit(:,2)==1,1),75), max(xtit(xtit(:,2)==1,1)))
 
 
 %% Section 3, Question 1
-% ----------------------------------------------------------------------------
-%Step 1: estimate transition probabilities
-[theta31hat,theta31hatse,theta32hat,theta32hatse] = transitionprob(xt,it);
-
-%Step 2: Use nested fixed point to find theta1
-options = optimset('Display', 'iter', 'TolFun', 10e-10);
-
-[theta1hat,~,~,~,~,hess] = fminunc(@(theta1hat) -1 * rust(theta1hat, theta31hat, theta32hat, RC, beta, xt, it), rand, options);
-se = sqrt(diag(inv(hess)));
-
-sprintf('3.1\ntheta1 = %f (%f), \ntheta31 = %f (%f), \ntheta32 = %f(%f)', theta1hat, se,theta31hat,theta31hatse, theta32hat, theta32hatse)
-
-
-%% Section 3, Question 2
 % ----------------------------------------------------------------------------
 % columnize choices and transitions
 renew = reshape(it(1:999, :), [], 1);
@@ -98,27 +85,34 @@ trans = reshape(diff(xt), [], 1);
 
 % estimate transition probabilities using cases without renewal
 theta3 = tabulate(trans(renew == 0));
-theta3 = theta3(:, 3) / 100
+theta3 = theta3(:, 3) / 100;
+theta3se = sqrt(theta3.*(1-theta3) ./ sum(renew == 0));
 
-% estimate conditional choice probabilities
-prob = ccp(xt, it);
-% prob(1) is the probability of replacing when xt = 0, and
-% prob(20) is the probability of replacing when xt = 19, and so on...
+%% Use nested fixed point to find theta1
+obj = @(theta1hat) -1 * rust(theta1hat, theta3(2), theta3(3), RC, beta, xt, it);
+[theta1hat, ~, ~, ~, ~, hess] = fminunc(obj, rand, options);
+se = sqrt(diag(inv(hess)));
 
-x = xt(:);  % stack the observations
-% calculate difference in log probabilities (continue - renew)
-pdiff = log(1 - prob(x + 1)) - log(prob(x + 1));
+sprintf('Theta 3')
+sprintf('%0.04f (%0.04f)\n', [theta3, theta3se]')
+sprintf('Theta 1 Rust:  %0.04f (%0.04f)', theta1hat, se)
 
-% calculate difference in values (continue - renew) at theta1
-cons = -beta*(theta3(1)*log(prob(x + 1)) + ...
-              theta3(2)*log(prob(x + 2)) + ...
-              theta3(3)*log(prob(x + 3)) ...
-             ) + RC + beta*log(prob(1));
-     
-vdiff = @(theta) cons - (theta * x);
 
-% estimate theta using minimum distance
-theta1 = fminsearch(@(t) norm(pdiff - vdiff(t)), unifrnd(0, 1))
+%% Section 3, Question 2
+% ----------------------------------------------------------------------------
+% estimate theta_1 using conditional choice probabilities
+theta1 = hotz(xt, it, RC, theta3, beta, options);
+
+% bootstrap the standard errors
+boots = bootstrp(500, @(x, i) hotz(x, i, RC, theta3, beta, options), xt, it);
+sprintf('Theta 1 CCP:  %0.04f (%0.04f)', theta1, std(boots))
+
+f = figure('PaperPosition', [.1, .2, 6.2, 3.5], 'PaperSize', [6.4, 4]);
+histogram(boots, 20)
+title('Estimates of $\theta_1$, 500 Replications', 'interpreter', 'latex')
+xlabel('$\theta_1$', 'interpreter', 'latex')
+saveas(f, 'figs/theta_1_hist.pdf');
+
 
 %% Section 3, Question 3
 % ----------------------------------------------------------------------------
@@ -126,6 +120,7 @@ EVNew = ev(beta, 20, .02, 1-theta31hat-theta32hat, theta31hat, theta32hat);
 EVNew(1,1)
 EVOld = ev(beta, 10, theta1hat, 1-theta31hat-theta32hat, theta31hat, theta32hat);
 EVOld(1,1)
+
 
 %% Section 3, Question 4
 % ----------------------------------------------------------------------------
